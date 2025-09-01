@@ -57,7 +57,7 @@ const DashboardScreen: React.FC<DashboardScreenProps> = ({ onMenuPress }) => {
       <ScrollView 
         className="flex-1"
         showsVerticalScrollIndicator={false}
-        contentContainerClassName="pb-24"
+        contentContainerStyle={{ paddingBottom: 96 }}
       >
         <AnimatedHeader 
             onMenuPress={onMenuPress}
