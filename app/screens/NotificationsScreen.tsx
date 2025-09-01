@@ -110,7 +110,7 @@ const NotificationsScreen: React.FC = () => {
         <ScrollView
             className="flex-1"
             showsVerticalScrollIndicator={false}
-            contentContainerClassName="pb-20"
+            contentContainerStyle={{ paddingBottom: 80 }}
         >
           {/* Header */}
           <Animated.View style={animatedHeaderStyle} className="px-6 pt-8 pb-6">
