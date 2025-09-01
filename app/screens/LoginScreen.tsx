@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -22,8 +22,8 @@ import {
   AlertCircle,
   CheckCircle,
 } from "lucide-react-native";
-import { StorageManager, ServerConfig } from "../utils/storage";
 import { useAuth } from "../contexts/AuthContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -66,6 +66,47 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
     setIsLoading(true);
     try {
+      const baseUrl = getFullServerUrl();
+      const authUrl = `${baseUrl}/Auth`;
+
+      const formData = new URLSearchParams();
+      formData.append("grant_type", "password");
+      formData.append("username", username.trim());
+      formData.append("password", password.trim());
+
+      const response = await fetch(authUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData.toString(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+
+      // Extract tokens from response
+      const access_token = responseData.access_token;
+      const token_type = responseData.token_type;
+      const expires_in = responseData.expires_in;
+
+      if (!access_token || !token_type) {
+        throw new Error("Invalid response: missing tokens");
+      }
+
+      // Store tokens in AsyncStorage
+      await AsyncStorage.multiSet([
+        ["access_token", access_token],
+        ["token_type", token_type],
+        ["expires_in", expires_in.toString()],
+        ["logged_time", new Date().toISOString()],
+        ["is_logged", "yes"],
+      ]);
+
+      // Call the original login function to update auth context
       const success = await login(username.trim(), password.trim());
 
       if (success) {
@@ -74,6 +115,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
         Alert.alert("Login Failed", "Invalid credentials. Please try again.");
       }
     } catch (error) {
+      console.error("Login error:", error);
       Alert.alert(
         "Login Error",
         "Failed to connect to server. Please check your server configuration."
@@ -248,7 +290,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           <StyledView className="bg-blue-50 rounded-lg p-4 mb-6">
             <StyledText className="text-blue-800 text-sm leading-5">
               💡 <StyledText className="font-semibold">Need help?</StyledText>{" "}
-              If you're having trouble connecting, check your server
+              If you&apos;re having trouble connecting, check your server
               configuration or contact your system administrator.
             </StyledText>
           </StyledView>

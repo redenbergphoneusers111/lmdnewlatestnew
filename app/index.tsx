@@ -1,9 +1,9 @@
 import React from "react";
 import { View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import MainNavigator from "../components/navigation/MainNavigator";
-import AuthNavigator from "../components/navigation/AuthNavigator";
-import { AuthProvider, useAuth } from "../contexts/AuthContext";
+import MainNavigator from "./components/navigation/MainNavigator";
+import AuthNavigator from "./components/navigation/AuthNavigator";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 function AppContent() {
   const { isAuthenticated, logout } = useAuth();

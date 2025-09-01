@@ -8,11 +8,12 @@ import Animated, {
   interpolate,
   runOnJS,
 } from "react-native-reanimated";
-import { Menu, LogOut } from "lucide-react-native";
+import { Menu, LogOut, ArrowLeft } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { styled } from "nativewind";
 import AnimatedDrawer from "./AnimatedDrawer";
 import BottomTabNavigator, { BottomTabHandle } from "./BottomTabNavigator";
+import WalletScreen from "../../screens/WalletScreen";
 
 // Styled components with NativeWind
 const StyledView = styled(View);
@@ -29,6 +30,7 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const drawerProgress = useSharedValue(0);
   const tabsRef = useRef<BottomTabHandle>(null);
+  const [standaloneRoute, setStandaloneRoute] = useState<string | null>(null);
 
   const toggleDrawer = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -55,6 +57,11 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
     onLogout();
   };
 
+  const handleBackFromStandalone = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setStandaloneRoute(null);
+  };
+
   const animatedMainStyle = useAnimatedStyle(() => {
     const scale = interpolate(drawerProgress.value, [0, 1], [1, 0.88]);
     const translateX = interpolate(drawerProgress.value, [0, 1], [0, 280]);
@@ -72,12 +79,18 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   }));
 
   const onNavigate = (route: string) => {
-    // Map drawer routes to bottom tabs
+    if (route === "wallet") {
+      setStandaloneRoute("wallet");
+      closeDrawer();
+      return;
+    }
+
+    // Clear any standalone screen and map drawer routes to bottom tabs
+    setStandaloneRoute(null);
     const routeToTab: Record<string, string> = {
       home: "home",
       deliveries: "my deliveries",
       notifications: "notifications",
-      wallet: "wallet", // example mapping if you add a wallet tab in future
       transfer: "home",
       return: "home",
     };
@@ -109,30 +122,52 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
           className="flex-1 bg-primary-500 overflow-hidden"
           style={animatedMainStyle}
         >
-          <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
-            <StyledView className="flex-row items-center">
+          {standaloneRoute === "wallet" ? (
+            <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
+              <StyledView className="flex-row items-center">
+                <StyledPressable
+                  className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
+                  onPress={handleBackFromStandalone}
+                  android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+                >
+                  <ArrowLeft size={24} color="#FFFFFF" />
+                </StyledPressable>
+                <StyledText className="text-white text-xl font-bold ml-2">
+                  Wallet
+                </StyledText>
+              </StyledView>
+              <StyledView style={{ width: 40, height: 40 }} />
+            </StyledView>
+          ) : (
+            <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
+              <StyledView className="flex-row items-center">
+                <StyledPressable
+                  className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
+                  onPress={toggleDrawer}
+                  android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+                >
+                  <Menu size={24} color="#FFFFFF" />
+                </StyledPressable>
+                <StyledText className="text-white text-xl font-bold ml-2">
+                  Dashboard
+                </StyledText>
+              </StyledView>
+
+              {/* Logout Button */}
               <StyledPressable
                 className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
-                onPress={toggleDrawer}
+                onPress={handleLogout}
                 android_ripple={{ color: "rgba(255,255,255,0.2)" }}
               >
-                <Menu size={24} color="#FFFFFF" />
+                <LogOut size={24} color="#FFFFFF" />
               </StyledPressable>
-              <StyledText className="text-white text-xl font-bold ml-2">
-                Dashboard
-              </StyledText>
             </StyledView>
-
-            {/* Logout Button */}
-            <StyledPressable
-              className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
-              onPress={handleLogout}
-              android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-            >
-              <LogOut size={24} color="#FFFFFF" />
-            </StyledPressable>
-          </StyledView>
-          <BottomTabNavigator ref={tabsRef} />
+          )}
+          {standaloneRoute === "wallet" ? (
+            <WalletScreen />
+          ) : (
+            <BottomTabNavigator ref={tabsRef} />
+          )}
         </StyledAnimatedView>
       </StyledView>
     </StyledSafeAreaView>
