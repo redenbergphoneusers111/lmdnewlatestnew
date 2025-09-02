@@ -45,7 +45,7 @@ const VehicleSelectionScreen: React.FC<VehicleSelectionScreenProps> = ({
       const userRole = userDetails.length > 0 ? userDetails[0].roleName : 'admin';
       console.log('👤 User Role for Statistics API:', userRole);
       
-      // Call Statistics API after vehicle selection (like Java SelectVehicleActivity)
+      // Call Statistics API after vehicle selection (like Java SelectVehicleActivity) new
       console.log('📊 Calling Statistics API after vehicle selection...');
       const statisticsResponse = await apiService.getStatistics(vehicle.id, userRole);
       
