@@ -21,9 +21,10 @@ const StyledAnimatedView = styled(Animated.View);
 
 interface SplashScreenProps {
   onFinish: () => void;
+  autoFinish?: boolean;
 }
 
-const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
+const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, autoFinish = true }) => {
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
@@ -41,12 +42,20 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
     textOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
     textTranslateY.value = withDelay(400, withTiming(0, { duration: 600 }));
 
-    // Finish splash after animation
-    const timer = setTimeout(() => {
-      runOnJS(onFinish)();
-    }, 2500);
+    // Finish splash after animation (only if autoFinish is true)
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    if (autoFinish) {
+      timer = setTimeout(() => {
+        console.log('⏰ Splash screen auto-finishing after 2.5 seconds');
+        runOnJS(onFinish)();
+      }, 2500);
+    } else {
+      console.log('⏸️ Splash screen waiting for external finish (autoFinish=false)');
+    }
 
-    return () => clearTimeout(timer);
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, []);
 
   const logoAnimatedStyle = useAnimatedStyle(() => ({

@@ -8,6 +8,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -45,7 +46,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { login, activeServer } = useAuth();
+  const { login, activeServer, isLoading: authLoading } = useAuth();
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -66,53 +67,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
     setIsLoading(true);
     try {
-      const baseUrl = getFullServerUrl();
-      const authUrl = `${baseUrl}/Auth`;
-
-      const formData = new URLSearchParams();
-      formData.append("grant_type", "password");
-      formData.append("username", username.trim());
-      formData.append("password", password.trim());
-
-      const response = await fetch(authUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: formData.toString(),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const responseData = await response.json();
-
-      // Extract tokens from response
-      const access_token = responseData.access_token;
-      const token_type = responseData.token_type;
-      const expires_in = responseData.expires_in;
-
-      if (!access_token || !token_type) {
-        throw new Error("Invalid response: missing tokens");
-      }
-
-      // Store tokens in AsyncStorage
-      await AsyncStorage.multiSet([
-        ["access_token", access_token],
-        ["token_type", token_type],
-        ["expires_in", expires_in.toString()],
-        ["logged_time", new Date().toISOString()],
-        ["is_logged", "yes"],
-      ]);
-
-      // Call the original login function to update auth context
       const success = await login(username.trim(), password.trim());
 
       if (success) {
         onLoginSuccess();
       } else {
-        Alert.alert("Login Failed", "Invalid credentials. Please try again.");
+        Alert.alert("Login Failed", "Invalid credentials or server error. Please try again.");
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -131,7 +91,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-gray-50">
+    <StyledSafeAreaView className="flex-1 bg-indigo-600">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
@@ -140,17 +100,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           colors={["#4F46E5", "#7C3AED", "#EC4899"]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          className="h-40"
+          className="h-60"
         >
           <StyledView className="flex-1 items-center justify-center px-8">
-            <StyledView className="w-20 h-20 bg-white/20 rounded-full items-center justify-center mb-4">
-              <StyledText className="text-4xl">🚚</StyledText>
+            <StyledView className="w-20 h-20 bg-white/90 rounded-full items-center justify-center mb-4">
+              <Image
+                source={require("../../assets/lmdlogo.png")}
+                style={{ width: 64, height: 64 }}
+                resizeMode="contain"
+              />
             </StyledView>
             <StyledText className="text-white text-2xl font-bold text-center">
               Welcome Back
             </StyledText>
             <StyledText className="text-white/80 text-center mt-2">
-              Sign in to your delivery account
+              Sign in to your delivery agent account
             </StyledText>
           </StyledView>
         </LinearGradient>
