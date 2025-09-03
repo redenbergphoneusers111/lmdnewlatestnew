@@ -103,9 +103,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           className="h-60"
         >
           <StyledView className="flex-1 items-center justify-center px-8">
-            <StyledView className="w-20 h-20 bg-white/90 rounded-full items-center justify-center mb-4">
+            <StyledView className="w-20 h-20 bg-white/0 rounded-full items-center justify-center mb-4">
               <Image
-                source={require("../../assets/lmdlogo.png")}
+                source={require("../../assets/lmdloclogowhite.png")}
                 style={{ width: 64, height: 64 }}
                 resizeMode="contain"
               />
