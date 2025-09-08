@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { 
@@ -7,10 +7,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { 
   User, Edit3, Settings, Bell, Shield, HelpCircle,
-  Star, MapPin, Phone, Mail, Calendar, Award, ChevronRight
+  Star, MapPin, Phone, Mail, Calendar, Award, ChevronRight, LogOut
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import AnimatedHeader from '../components/ui/AnimatedHeader';
+import LogoutConfirmationDialog from '../components/ui/LogoutConfirmationDialog';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ProfileScreenProps {
   onMenuPress: () => void;
@@ -31,6 +33,23 @@ const profileStats = [
 ];
 
 const ProfileScreen: React.FC<ProfileScreenProps> = ({ onMenuPress }) => {
+  const { logout } = useAuth();
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+
+  const handleLogout = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutDialog(false);
+    logout();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutDialog(false);
+  };
+
   return (
     <LinearGradient colors={['#6C63FF', '#5b54d9']} className="flex-1">
       <ScrollView 
@@ -103,7 +122,39 @@ const ProfileScreen: React.FC<ProfileScreenProps> = ({ onMenuPress }) => {
             ))}
           </View>
         </Animated.View>
+
+        {/* Logout Section */}
+        <Animated.View entering={FadeInUp.delay(1300).duration(600)} className="mx-6 mb-6">
+          <View className="bg-red-500/20 rounded-2xl p-6 border border-red-300/30">
+            <View className="items-center">
+              <View className="w-16 h-16 bg-red-100 rounded-full items-center justify-center mb-4">
+                <LogOut size={24} color="#ef4444" />
+              </View>
+              <Text className="text-red-700 font-nunito font-semibold text-lg mb-2">Sign Out</Text>
+              <Text className="text-red-600 font-nunito text-sm text-center mb-4">
+                Sign out of your account to secure your data
+              </Text>
+              <Pressable 
+                className="bg-red-500 py-3 px-6 rounded-xl active:bg-red-600" 
+                onPress={handleLogout}
+                android_ripple={{ color: 'rgba(255,255,255,0.2)' }}
+              >
+                <View className="flex-row items-center">
+                  <LogOut size={18} color="#FFFFFF" />
+                  <Text className="text-white font-nunito font-semibold text-base ml-2">Logout</Text>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
       </ScrollView>
+
+      {/* Logout Confirmation Dialog */}
+      <LogoutConfirmationDialog
+        isVisible={showLogoutDialog}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
     </LinearGradient>
   );
 };

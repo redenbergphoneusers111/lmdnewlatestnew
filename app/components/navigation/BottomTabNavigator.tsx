@@ -1,4 +1,9 @@
-import React, { useState, forwardRef, useImperativeHandle } from "react";
+import React, {
+  useState,
+  forwardRef,
+  useImperativeHandle,
+  useRef,
+} from "react";
 import { View, Pressable } from "react-native";
 import Animated, {
   useSharedValue,
@@ -31,7 +36,7 @@ interface TabItem {
 }
 
 export interface BottomTabHandle {
-  selectTab: (tabId: string) => void;
+  selectTab: (tabId: string, params?: any) => void;
 }
 
 const tabs: TabItem[] = [
@@ -44,22 +49,43 @@ const tabs: TabItem[] = [
 
 const BottomTabNavigator = forwardRef<BottomTabHandle>((props, ref) => {
   const [activeTab, setActiveTab] = useState("home");
+  const [screenParams, setScreenParams] = useState<any>({});
   const tabAnimations = tabs.map(() => useSharedValue(0));
+  const internalRef = useRef<BottomTabHandle>(null);
 
   useImperativeHandle(ref, () => ({
-    selectTab: (tabId: string) => {
+    selectTab: (tabId: string, params?: any) => {
       const index = tabs.findIndex((t) => t.id === tabId);
       if (index !== -1) {
         setActiveTab(tabId);
+        if (params) {
+          setScreenParams(params);
+        }
         tabAnimations.forEach((anim) => (anim.value = 0));
         tabAnimations[index].value = withSpring(1);
       }
     },
   }));
 
+  // Expose the ref to child screens
+  const exposedRef = {
+    selectTab: (tabId: string, params?: any) => {
+      const index = tabs.findIndex((t) => t.id === tabId);
+      if (index !== -1) {
+        setActiveTab(tabId);
+        if (params) {
+          setScreenParams(params);
+        }
+        tabAnimations.forEach((anim) => (anim.value = 0));
+        tabAnimations[index].value = withSpring(1);
+      }
+    },
+  };
+
   const handleTabPress = (tabId: string, index: number) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setActiveTab(tabId);
+    setScreenParams({}); // Clear params when manually switching tabs
     tabAnimations.forEach((anim) => (anim.value = 0));
     tabAnimations[index].value = withSpring(1);
   };
@@ -69,9 +95,9 @@ const BottomTabNavigator = forwardRef<BottomTabHandle>((props, ref) => {
 
   return (
     <StyledView className="flex-1">
-      {/* Screen Content */}
+      {/* Screen Content new */}
       <StyledView className="flex-1">
-        <CurrentScreen />
+        <CurrentScreen {...screenParams} tabsRef={exposedRef} />
       </StyledView>
 
       {/* Bottom Tab Bar */}

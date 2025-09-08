@@ -1,5 +1,12 @@
-import React, { useEffect } from "react";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  RefreshControl,
+  ActivityIndicator,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
   useSharedValue,
@@ -12,6 +19,11 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import {
+  ShimmerCard,
+  ShimmerProgressCard,
+  ShimmerRecentItem,
+} from "../components/ui/ShimmerEffect";
+import {
   Truck,
   Send,
   ClipboardCheck,
@@ -23,12 +35,16 @@ import {
   Users,
   FileText,
   Boxes,
+  TrendingUp,
+  Calendar,
 } from "lucide-react-native";
 
 import AnimatedHeader from "../components/ui/AnimatedHeader";
 import StatusCard from "../components/ui/StatusCard";
 import DeliveryItem from "../components/ui/DeliveryItem";
 import ProgressChipCard from "../components/ui/ProgressChipCard";
+import { useAuth } from "../contexts/AuthContext";
+import apiService from "../services/apiService";
 
 interface DeliveryData {
   id: string;
@@ -38,51 +54,17 @@ interface DeliveryData {
   note?: string;
 }
 
-const deliveryData: DeliveryData[] = [
-  { id: "1", name: "Connor Davidson", amount: "$278.47", status: "delivered" },
-  { id: "2", name: "Connor Davidson", amount: "$278.47", status: "delivered" },
-  { id: "3", name: "Connor Davidson", amount: "$0", status: "cancelled" },
-  {
-    id: "4",
-    name: "Connor Davidson",
-    amount: "",
-    status: "pending",
-    note: "invalid address",
-  },
-  { id: "5", name: "Connor Davidson", amount: "$278.47", status: "delivered" },
-  {
-    id: "6",
-    name: "Connor Davidson",
-    amount: "",
-    status: "pending",
-    note: "Bad Weather",
-  },
-];
-
-const statusData = [
-  { id: "1", count: 20, label: "Completed", color: "#43C337" },
-  { id: "2", count: 6, label: "Postponed", color: "#E8B73A" },
-  { id: "3", count: 8, label: "Pending", color: "#6C93E5" },
-  { id: "4", count: 2, label: "Cancelled", color: "#FF2D55" },
-];
-
-type TileItem = {
-  id: string;
-  title: string;
-  count?: number; // completed count
-  completedCount?: number;
-  totalCount?: number;
-  color: string;
-  icon: React.ComponentType<any>;
-};
+const deliveryData: DeliveryData[] = [];
+const statusData = [] as any[];
 
 const HorizontalSection: React.FC<{
   title: string;
   children: React.ReactNode;
-}> = ({ title, children }) => (
-  <Animated.View entering={FadeInUp.duration(500)} className="mb-2">
-    <View className="flex-row items-center justify-between px-6 mb-3">
-      <Text className="text-white font-nunito font-extrabold text-base tracking-wide">
+  loading?: boolean;
+}> = ({ title, children, loading = false }) => (
+  <Animated.View entering={FadeInUp.duration(500)} className="mb-6">
+    <View className="px-6 mb-4">
+      <Text className="text-white/90 font-medium text-sm uppercase tracking-wider">
         {title}
       </Text>
     </View>
@@ -91,92 +73,54 @@ const HorizontalSection: React.FC<{
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ paddingHorizontal: 24 }}
     >
-      <View className="flex-row">{children}</View>
+      {loading ? (
+        <View className="flex-row">
+          <ShimmerProgressCard />
+          <ShimmerProgressCard />
+          <ShimmerProgressCard />
+        </View>
+      ) : (
+        <View className="flex-row">{children}</View>
+      )}
     </ScrollView>
   </Animated.View>
 );
 
-const TileCard: React.FC<{ item: TileItem; index: number }> = ({
-  item,
-  index,
-}) => (
-  <Animated.View
-    entering={FadeInUp.delay(80 + index * 60).duration(380)}
-    className="mr-3"
-  >
-    <Pressable
-      className="bg-white/15 rounded-2xl p-4 active:bg-white/25 w-44"
-      onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-      android_ripple={{ color: "rgba(255,255,255,0.25)" }}
-    >
-      <View className="flex-row items-center justify-between mb-3">
-        <View
-          className="w-10 h-10 rounded-full items-center justify-center"
-          style={{ backgroundColor: item.color + "30" }}
-        >
-          <item.icon size={20} color={item.color} />
-        </View>
-        {(() => {
-          const completed =
-            typeof item.completedCount === "number"
-              ? item.completedCount
-              : typeof item.count === "number"
-              ? item.count
-              : undefined;
-          return typeof completed === "number" ? (
-            <Text className="text-white font-nunito font-bold text-xl">
-              {completed}
-            </Text>
-          ) : null;
-        })()}
+const StatsCard: React.FC<{
+  title: string;
+  value: string;
+  subtitle?: string;
+  icon: React.ComponentType<any>;
+  color: string;
+}> = ({ title, value, subtitle, icon: Icon, color }) => (
+  <View className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 mr-3 min-w-[140px]">
+    <View className="flex-row items-center justify-between mb-3">
+      <View
+        className="w-10 h-10 rounded-xl items-center justify-center"
+        style={{ backgroundColor: color + "20" }}
+      >
+        <Icon size={20} color={color} />
       </View>
-      <Text className="text-white font-nunito font-semibold text-base">
-        {item.title}
-      </Text>
-      {(() => {
-        const completed =
-          typeof item.completedCount === "number"
-            ? item.completedCount
-            : typeof item.count === "number"
-            ? item.count
-            : undefined;
-        const total =
-          typeof item.totalCount === "number" ? item.totalCount : undefined;
-        if (
-          typeof completed === "number" &&
-          typeof total === "number" &&
-          total > 0
-        ) {
-          const pct = Math.max(
-            0,
-            Math.min(100, Math.round((completed / total) * 100))
-          );
-          return (
-            <View className="mt-3">
-              <View className="h-2 w-full bg-white/20 rounded-full overflow-hidden">
-                <View
-                  className="h-2 bg-white"
-                  style={{ width: `${pct}%` } as any}
-                />
-              </View>
-              <View className="flex-row justify-between mt-1">
-                <Text className="text-white/80 font-nunito text-xs">
-                  {completed}/{total}
-                </Text>
-                <Text className="text-white/80 font-nunito text-xs">
-                  {pct}%
-                </Text>
-              </View>
-            </View>
-          );
-        }
-        return null;
-      })()}
-    </Pressable>
-  </Animated.View>
+      <View className="items-end">
+        <Text className="text-white font-bold text-lg">{value}</Text>
+        {subtitle && <Text className="text-white/70 text-xs">{subtitle}</Text>}
+      </View>
+    </View>
+    <Text className="text-white/80 font-medium text-sm">{title}</Text>
+  </View>
 );
 
-const HomeScreen: React.FC = () => {
+interface HomeScreenProps {
+  tabsRef?: any;
+}
+
+const HomeScreen: React.FC<HomeScreenProps> = ({ tabsRef }) => {
+  const { selectedVehicle, userDetails } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statistics, setStatistics] = useState<any | null>(null);
+
   const headerOpacity = useSharedValue(0);
   const cardsOpacity = useSharedValue(0);
   const todayLabel = new Date().toLocaleDateString(undefined, {
@@ -199,278 +143,399 @@ const HomeScreen: React.FC = () => {
     transform: [{ translateY: withSpring(cardsOpacity.value === 1 ? 0 : 50) }],
   }));
 
+  const userRole = useMemo(() => {
+    return userDetails && userDetails.length > 0
+      ? userDetails[0].roleName || "admin"
+      : "admin";
+  }, [userDetails]);
+
+  const fetchStatistics = async () => {
+    if (!selectedVehicle) return;
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await apiService.getStatistics(selectedVehicle.id, userRole);
+      if (res.success) {
+        setStatistics(res.data);
+      } else {
+        setError(res.error || "Failed to load statistics");
+      }
+    } catch (e: any) {
+      setError(e?.message || "Failed to load statistics");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStatistics();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVehicle, userRole]);
+
+  // Calculate summary stats
+  const totalDeliveries = useMemo(() => {
+    if (!statistics?.statisticsDOs) return 0;
+    return statistics.statisticsDOs.reduce(
+      (sum: number, item: any) => sum + (Number(item.counts) || 0),
+      0
+    );
+  }, [statistics]);
+
+  const totalPickups = useMemo(() => {
+    if (!statistics?.statisticsPRs) return 0;
+    return statistics.statisticsPRs.reduce(
+      (sum: number, item: any) => sum + (Number(item.counts) || 0),
+      0
+    );
+  }, [statistics]);
+
+  const totalTasks = useMemo(() => {
+    if (!statistics?.statisticstasks) return 0;
+    return statistics.statisticstasks.reduce(
+      (sum: number, item: any) => sum + (Number(item.counts) || 0),
+      0
+    );
+  }, [statistics]);
+
   return (
     <View className="flex-1">
-      <LinearGradient colors={["#6C63FF", "#5b54d9"]} className="flex-1">
+      <LinearGradient
+        colors={["#6366f1", "#4f46e5", "#3730a3"]}
+        className="flex-1"
+      >
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => {
+                setRefreshing(true);
+                fetchStatistics();
+              }}
+            />
+          }
         >
-          {/* Today Section */}
+          {/* Header Section */}
           <Animated.View
-            entering={FadeInUp.delay(400).duration(600)}
-            className="px-6 mb-8 mt-6"
+            entering={FadeInUp.delay(200).duration(600)}
+            className="px-6 mb-6 mt-12"
           >
-            <View className="flex-row items-end justify-between mb-3">
+            <View className="flex-row items-center justify-between mb-2">
               <View>
-                <Text className="text-white font-nunito font-extrabold text-2xl tracking-wide">
-                  Today
+                <Text className="text-white font-semibold text-2xl">
+                  Dashboard
                 </Text>
-                <Text className="text-white/80 font-nunito text-xs mt-1">
-                  {todayLabel}
-                </Text>
+                <Text className="text-white/70 text-sm mt-1">{todayLabel}</Text>
+              </View>
+              <View className="w-10 h-10 bg-white/20 rounded-full items-center justify-center">
+                <TrendingUp size={20} color="white" />
               </View>
             </View>
-
-            {/* Status Cards Grid */}
-            <Animated.View style={animatedCardsStyle}>
-              <View className="flex-row flex-wrap justify-between">
-                {statusData.map((status, index) => (
-                  <StatusCard
-                    key={status.id}
-                    count={status.count}
-                    label={status.label}
-                    color={status.color}
-                    delay={index * 100}
-                  />
-                ))}
-              </View>
-            </Animated.View>
           </Animated.View>
 
-          {/* Action Tiles - Horizontal Carousels */}
-          <HorizontalSection title="Delivery Orders">
-            {[
-              {
-                id: "do1",
-                title: "Picking",
-                completedCount: 12,
-                totalCount: 20,
-                color: "#6C93E5",
-                icon: Truck,
-              },
-              {
-                id: "do2",
-                title: "Dispatching",
-                completedCount: 8,
-                totalCount: 14,
-                color: "#6C63FF",
-                icon: Send,
-              },
-              {
-                id: "do3",
-                title: "Confirmation",
-                completedCount: 6,
-                totalCount: 10,
-                color: "#43C337",
-                icon: ClipboardCheck,
-              },
-              {
-                id: "do4",
-                title: "Cancelled",
-                completedCount: 2,
-                totalCount: 4,
-                color: "#FF2D55",
-                icon: XCircle,
-              },
-              {
-                id: "do5",
-                title: "Completed",
-                completedCount: 20,
-                totalCount: 24,
-                color: "#22C55E",
-                icon: CheckCircle2,
-              },
-            ].map((item, index) => (
-              <ProgressChipCard
-                key={item.id}
-                title={item.title}
-                subtitle={`${item.completedCount}/${item.totalCount}`}
-                percent={Math.round(
-                  ((item.completedCount ?? 0) / (item.totalCount ?? 1)) * 100
-                )}
-                icon={item.icon}
-                color={item.color}
-              />
-            ))}
+          {/* Summary Stats Cards */}
+          <Animated.View
+            entering={FadeInUp.delay(400).duration(600)}
+            className="mb-8"
+          >
+            {loading ? (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 24 }}
+              >
+                <ShimmerCard height={100} />
+                <ShimmerCard height={100} />
+                <ShimmerCard height={100} />
+              </ScrollView>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 24 }}
+              >
+                <StatsCard
+                  title="Total Deliveries"
+                  value={totalDeliveries.toString()}
+                  subtitle="Today"
+                  icon={Truck}
+                  color="#10b981"
+                />
+                <StatsCard
+                  title="Pickup Orders"
+                  value={totalPickups.toString()}
+                  subtitle="Today"
+                  icon={PackagePlus}
+                  color="#3b82f6"
+                />
+                <StatsCard
+                  title="Active Tasks"
+                  value={totalTasks.toString()}
+                  subtitle="Pending"
+                  icon={ClipboardList}
+                  color="#f59e0b"
+                />
+              </ScrollView>
+            )}
+          </Animated.View>
+
+          {/* Delivery Orders Section */}
+          <HorizontalSection title="Delivery Orders" loading={loading}>
+            {(statistics?.statisticsDOs || []).map((s: any, index: number) => {
+              const icon =
+                s.category === "Picking"
+                  ? Truck
+                  : s.category === "Dispatching"
+                  ? Send
+                  : s.category === "Confirmation"
+                  ? ClipboardCheck
+                  : s.category === "Cancelled"
+                  ? XCircle
+                  : CheckCircle2;
+              const color =
+                s.category === "Picking"
+                  ? "#3b82f6" // Blue
+                  : s.category === "Dispatching"
+                  ? "#8b5cf6" // Purple
+                  : s.category === "Confirmation"
+                  ? "#10b981" // Green
+                  : s.category === "Cancelled"
+                  ? "#ef4444" // Red
+                  : "#059669"; // Dark Green
+              return (
+                <ProgressChipCard
+                  key={`do-${index}`}
+                  title={s.category}
+                  subtitle={`${s.counts}`}
+                  icon={icon}
+                  color={color}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    // Navigate to RecentOrdersScreen with Delivery Order type and specific status
+                    if (tabsRef) {
+                      tabsRef.selectTab("recent order", {
+                        initialOrderType: "Delivery Order",
+                        initialStatus: s.category.toUpperCase(),
+                      });
+                    }
+                  }}
+                />
+              );
+            })}
           </HorizontalSection>
 
-          <HorizontalSection title="Pickup Orders">
-            {[
-              {
-                id: "po1",
-                title: "Pickup Orders",
-                completedCount: 5,
-                totalCount: 12,
-                color: "#6C63FF",
-                icon: PackagePlus,
-              },
-              {
-                id: "po2",
-                title: "Return Confirmation",
-                completedCount: 3,
-                totalCount: 6,
-                color: "#43C337",
-                icon: ClipboardCheck,
-              },
-              {
-                id: "po3",
-                title: "Cancelled",
-                completedCount: 1,
-                totalCount: 3,
-                color: "#FF2D55",
-                icon: XCircle,
-              },
-              {
-                id: "po4",
-                title: "Completed",
-                completedCount: 9,
-                totalCount: 11,
-                color: "#22C55E",
-                icon: CheckCircle2,
-              },
-            ].map((item, index) => (
-              <ProgressChipCard
-                key={item.id}
-                title={item.title}
-                subtitle={`${item.completedCount}/${item.totalCount}`}
-                percent={Math.round(
-                  ((item.completedCount ?? 0) / (item.totalCount ?? 1)) * 100
-                )}
-                icon={item.icon}
-                color={item.color}
-              />
-            ))}
+          {/* Pickup Orders Section */}
+          <HorizontalSection title="Pickup Orders" loading={loading}>
+            {(statistics?.statisticsPRs || []).map((s: any, index: number) => {
+              const icon =
+                s.category === "Pickup Order"
+                  ? PackagePlus
+                  : s.category === "Return Confirmation"
+                  ? ClipboardCheck
+                  : s.category === "Cancelled"
+                  ? XCircle
+                  : CheckCircle2;
+              const color =
+                s.category === "Pickup Order"
+                  ? "#f59e0b" // Orange
+                  : s.category === "Return Confirmation"
+                  ? "#10b981" // Green
+                  : s.category === "Cancelled"
+                  ? "#ef4444" // Red
+                  : "#059669"; // Dark Green
+              return (
+                <ProgressChipCard
+                  key={`pr-${index}`}
+                  title={s.category}
+                  subtitle={`${s.counts}`}
+                  icon={icon}
+                  color={color}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (tabsRef) {
+                      tabsRef.selectTab("recent order", {
+                        initialOrderType: "Pickup Order",
+                        initialStatus: s.category.toUpperCase(),
+                      });
+                    }
+                  }}
+                />
+              );
+            })}
           </HorizontalSection>
 
-          <HorizontalSection title="Tasks">
-            {[
-              {
-                id: "t1",
-                title: "Pending",
-                completedCount: 7,
-                totalCount: 15,
-                color: "#E8B73A",
-                icon: ClipboardList,
-              },
-              {
-                id: "t2",
-                title: "Completed",
-                completedCount: 18,
-                totalCount: 20,
-                color: "#43C337",
-                icon: CheckCircle2,
-              },
-            ].map((item, index) => (
-              <ProgressChipCard
-                key={item.id}
-                title={item.title}
-                subtitle={`${item.completedCount}/${item.totalCount}`}
-                percent={Math.round(
-                  ((item.completedCount ?? 0) / (item.totalCount ?? 1)) * 100
-                )}
-                icon={item.icon}
-                color={item.color}
-              />
-            ))}
+          {/* Tasks Section */}
+          <HorizontalSection title="Tasks" loading={loading}>
+            {(statistics?.statisticstasks || []).map(
+              (s: any, index: number) => {
+                const icon =
+                  s.category === "Pending" ? ClipboardList : CheckCircle2;
+                const color = s.category === "Pending" ? "#f59e0b" : "#10b981"; // Orange for pending, Green for completed
+                return (
+                  <ProgressChipCard
+                    key={`task-${index}`}
+                    title={s.category}
+                    subtitle={`${s.counts}`}
+                    icon={icon}
+                    color={color}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      if (tabsRef) {
+                        // Map statistics category to API status parameter
+                        const apiStatus =
+                          s.category === "Pending"
+                            ? "PENDING"
+                            : s.category === "Completed"
+                            ? "Completed"
+                            : "ALL";
+                        tabsRef.selectTab("recent order", {
+                          initialOrderType: "Tasks",
+                          initialStatus: apiStatus,
+                        });
+                      }
+                    }}
+                  />
+                );
+              }
+            )}
           </HorizontalSection>
 
-          <HorizontalSection title="Merchandise Activity">
-            {[
-              {
-                id: "m1",
-                title: "Sale Orders",
-                completedCount: 14,
-                totalCount: 22,
-                color: "#6C63FF",
-                icon: ShoppingCart,
-              },
-              {
-                id: "m2",
-                title: "Customer List",
-                completedCount: 230,
-                totalCount: 520,
-                color: "#6C93E5",
-                icon: Users,
-              },
-              {
-                id: "m3",
-                title: "Invoice List",
-                completedCount: 42,
-                totalCount: 60,
-                color: "#E8B73A",
-                icon: FileText,
-              },
-              {
-                id: "m4",
-                title: "Items List",
-                completedCount: 128,
-                totalCount: 200,
-                color: "#43C337",
-                icon: Boxes,
-              },
-              {
-                id: "m5",
-                title: "Drafts",
-                completedCount: 6,
-                totalCount: 11,
-                color: "#ACB1C0",
-                icon: FileText,
-              },
-            ].map((item) => (
-              <ProgressChipCard
-                key={item.id}
-                title={item.title}
-                subtitle={`${item.completedCount}/${item.totalCount}`}
-                percent={Math.round(
-                  ((item.completedCount ?? 0) / (item.totalCount ?? 1)) * 100
-                )}
-                icon={item.icon}
-                color={item.color}
-              />
-            ))}
+          {/* Merchandise Activity Section */}
+          <HorizontalSection title="Merchandise Activity" loading={loading}>
+            {(statistics?.statisticsMCA || []).map((s: any, index: number) => {
+              const icon =
+                s.category === "Sales Order"
+                  ? ShoppingCart
+                  : s.category === "Customer"
+                  ? Users
+                  : s.category === "Items"
+                  ? Boxes
+                  : FileText;
+              const color =
+                s.category === "Sales Order"
+                  ? "#8b5cf6" // Purple
+                  : s.category === "Customer"
+                  ? "#3b82f6" // Blue
+                  : s.category === "Items"
+                  ? "#10b981" // Green
+                  : "#f59e0b"; // Orange
+              return (
+                <ProgressChipCard
+                  key={`mca-${index}`}
+                  title={s.category}
+                  subtitle={`${s.counts}`}
+                  icon={icon}
+                  color={color}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    if (tabsRef) {
+                      tabsRef.selectTab("recent order", {
+                        initialOrderType: "Delivery Order",
+                        initialStatus: "ALL",
+                      });
+                    }
+                  }}
+                />
+              );
+            })}
           </HorizontalSection>
 
           {/* Recent Section */}
           <Animated.View
             entering={FadeInUp.delay(600).duration(600)}
-            className="bg-white mx-6 rounded-xl shadow-lg  mt-6"
+            className="bg-white mx-6 rounded-2xl shadow-sm mt-8"
           >
             {/* Recent Header */}
-            <View className="flex-row items-center justify-between px-5 py-4 border-b border-gray-100">
-              <Text className="text-text-primary font-nunito font-normal text-xs uppercase tracking-wider">
-                RECENT
+            <View className="flex-row items-center justify-between px-6 py-5 border-b border-gray-50">
+              <Text className="text-gray-600 font-medium text-xs uppercase tracking-wider">
+                RECENT ACTIVITY (10)
               </Text>
               <Pressable
-                className="px-3 py-1 rounded-md active:bg-red-50"
-                onPress={() =>
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
-                }
-                android_ripple={{ color: "#fee2e2" }}
+                className="px-4 py-2 rounded-lg active:bg-gray-50"
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  if (tabsRef) {
+                    tabsRef.selectTab("recent order", {
+                      initialOrderType: "Delivery Order",
+                      initialStatus: "ALL",
+                    });
+                  }
+                }}
+                android_ripple={{ color: "#f9fafb" }}
               >
-                <Text className="text-status-cancelled font-sf-display font-medium text-sm">
-                  Show all
+                <Text className="text-indigo-600 font-medium text-sm">
+                  View all
                 </Text>
               </Pressable>
             </View>
 
             {/* Delivery Items */}
-            <View className="px-5 py-2">
-              {deliveryData.map((delivery, index) => (
-                <Animated.View
-                  key={delivery.id}
-                  entering={FadeInDown.delay(800 + index * 100).duration(400)}
-                >
-                  <DeliveryItem
-                    name={delivery.name}
-                    amount={delivery.amount}
-                    status={delivery.status}
-                    note={delivery.note}
-                    isLast={index === deliveryData.length - 1}
-                  />
-                </Animated.View>
-              ))}
+            <View className="px-4 py-4">
+              {loading ? (
+                <View>
+                  <ShimmerRecentItem />
+                  <ShimmerRecentItem />
+                  <ShimmerRecentItem />
+                  <ShimmerRecentItem />
+                  <ShimmerRecentItem />
+                </View>
+              ) : (
+                (() => {
+                  const totalDoDetails = (
+                    statistics?.statisticsDODetails || []
+                  ).reduce(
+                    (sum: number, it: any) => sum + (Number(it.counts) || 0),
+                    0
+                  );
+                  if (totalDoDetails > 0) {
+                    const details = (
+                      statistics?.statisticsDODetails || []
+                    ).flatMap((it: any) => it.stageDetails || []);
+                    if (details.length > 0) {
+                      // Debug: Log the first item to see available fields
+                      if (details.length > 0) {
+                        console.log(
+                          "🔍 Recent Activity Data Sample:",
+                          JSON.stringify(details[0], null, 2)
+                        );
+                      }
+                      return details
+                        .slice(0, 10)
+                        .map((d: any, index: number) => (
+                          <Animated.View
+                            key={`recent-${index}`}
+                            entering={FadeInDown.delay(
+                              800 + index * 100
+                            ).duration(400)}
+                          >
+                            <DeliveryItem
+                              name={d?.customerName || d?.name || "-"}
+                              orderNumber={
+                                d?.docNum || d?.orderNumber || d?.doStr || d?.id
+                              }
+                              amount={d?.amount ? String(d.amount) : ""}
+                              status={(d?.status as any) || "pending"}
+                              note={d?.note}
+                              isLast={
+                                index === Math.min(details.length, 10) - 1
+                              }
+                            />
+                          </Animated.View>
+                        ));
+                    }
+                  }
+                  return (
+                    <View className="py-12 items-center">
+                      <Text className="text-gray-400 text-sm">
+                        No recent activity
+                      </Text>
+                    </View>
+                  );
+                })()
+              )}
             </View>
           </Animated.View>
         </ScrollView>

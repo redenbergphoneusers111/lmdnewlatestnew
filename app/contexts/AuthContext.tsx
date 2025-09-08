@@ -5,7 +5,15 @@ import React, {
   useEffect,
   ReactNode,
 } from "react";
-import { StorageManager, UserAuth, ServerConfig, DBConfig, UserDetails, Vehicle, STORAGE_KEYS } from "../utils/storage";
+import {
+  StorageManager,
+  UserAuth,
+  ServerConfig,
+  DBConfig,
+  UserDetails,
+  Vehicle,
+  STORAGE_KEYS,
+} from "../utils/storage";
 import apiService from "../services/apiService";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -73,7 +81,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(userAuth);
       setActiveServer(active || null);
       // Only set authenticated if user is logged in, has servers, AND has selected a vehicle
-      setIsAuthenticated(userAuth.isLoggedIn && servers.length > 0 && !!selectedVehicleData);
+      setIsAuthenticated(
+        userAuth.isLoggedIn && servers.length > 0 && !!selectedVehicleData
+      );
     } catch (error) {
       console.error("Error refreshing auth state:", error);
       setIsAuthenticated(false);
@@ -91,7 +101,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     password: string
   ): Promise<boolean> => {
     try {
-      console.log('🔐 Starting login process for user:', username);
+      console.log("🔐 Starting login process for user:", username);
       if (!activeServer) {
         throw new Error("No active server configured");
       }
@@ -99,15 +109,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
 
       // Perform real login API call
-      console.log('📡 Making login API call...');
-      const loginResponse = await apiService.login(activeServer, username, password);
+      console.log("📡 Making login API call...");
+      const loginResponse = await apiService.login(
+        activeServer,
+        username,
+        password
+      );
 
       if (!loginResponse.success) {
-        console.error('❌ Login API failed:', loginResponse.error);
+        console.error("❌ Login API failed:", loginResponse.error);
         throw new Error(loginResponse.error || "Login failed");
       }
 
-      console.log('✅ Login API successful, tokens received');
+      console.log("✅ Login API successful, tokens received");
 
       // Extract user info from login response (assuming it's included)
       const userAuth: UserAuth = {
@@ -120,14 +134,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await StorageManager.saveUserAuth(userAuth);
       await StorageManager.setFirstTimeSetup(false);
 
+      // Store server config for token refresh
+      await AsyncStorage.setItem(
+        "active_server_config",
+        JSON.stringify(activeServer)
+      );
+
       setUser(userAuth);
       // Don't set isAuthenticated=true here - wait for vehicle selection
 
       // Fetch post-login data
-      console.log('📊 Fetching post-login data...');
+      console.log("📊 Fetching post-login data...");
       await fetchPostLoginData(username, password);
 
-      console.log('🎉 Login process completed successfully');
+      console.log("🎉 Login process completed successfully");
       return true;
     } catch (error) {
       console.error("❌ Login error:", error);
@@ -137,53 +157,57 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const processUserDetailsResponse = async (userDetailsData: UserDetails[], username: string, password: string) => {
+  const processUserDetailsResponse = async (
+    userDetailsData: UserDetails[],
+    username: string,
+    password: string
+  ) => {
     try {
-      console.log('🔄 Processing User Details Response (like Java code)...');
-      
+      console.log("🔄 Processing User Details Response (like Java code)...");
+
       // Equivalent to: pref.setUserDefinition(response);
       const responseJson = JSON.stringify(userDetailsData);
       await StorageManager.setUserDefinition(responseJson);
-      
+
       // Log equivalent to: Log.e("VEH_DET", pref.getUserDefinition());
       const savedUserDefinition = await StorageManager.getUserDefinition();
-      console.log('📄 VEH_DET:', savedUserDefinition);
-      
+      console.log("📄 VEH_DET:", savedUserDefinition);
+
       if (userDetailsData.length > 0) {
         // Equivalent to: JSONObject obj = jsonArray.getJSONObject(0);
         const firstUserObject = userDetailsData[0];
-        
+
         // Equivalent to: pref.setId(obj.getString("userID"));
         await StorageManager.setId(firstUserObject.userID.toString());
-        
+
         // Equivalent to: pref.setUser_name(obj.getString("name"));
         await StorageManager.setUser_name(firstUserObject.name);
-        
+
         // Equivalent to: pref.setWith_space(true);
         await StorageManager.setWith_space(true);
-        
+
         // Equivalent to: pref.setU_name(username.getEditText().getText().toString().trim());
         await StorageManager.setU_name(username.trim());
-        
+
         // Equivalent to: pref.setU_pass(password.getEditText().getText().toString().trim());
         await StorageManager.setU_pass(password.trim());
-        
-        console.log('✅ User details processed and saved (Java style):', {
+
+        console.log("✅ User details processed and saved (Java style):", {
           userID: firstUserObject.userID,
           name: firstUserObject.name,
           with_space: true,
           u_name: username.trim(),
-          u_pass: '[HIDDEN]'
+          u_pass: "[HIDDEN]",
         });
       }
     } catch (error) {
-      console.error('❌ Error processing user details response:', error);
+      console.error("❌ Error processing user details response:", error);
     }
   };
 
   const fetchPostLoginData = async (username: string, password: string) => {
     try {
-      console.log('🔧 Fetching DB Configuration...');
+      console.log("🔧 Fetching DB Configuration...");
       // Fetch DB Configuration
       const dbConfigResponse = await apiService.getDBConfigurationSettings();
       if (dbConfigResponse.success && dbConfigResponse.data) {
@@ -193,42 +217,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         );
 
         if (serviceLayerConfig) {
-          console.log('✅ DB Config found:', serviceLayerConfig.settingName);
+          console.log("✅ DB Config found:", serviceLayerConfig.settingName);
           setDbConfig(serviceLayerConfig);
           await StorageManager.saveDBConfig(serviceLayerConfig);
         } else {
-          console.warn('⚠️ No Service Layer configuration found');
+          console.warn("⚠️ No Service Layer configuration found");
         }
       } else {
-        console.error('❌ Failed to fetch DB config:', dbConfigResponse.error);
+        console.error("❌ Failed to fetch DB config:", dbConfigResponse.error);
       }
 
-      console.log('👤 Fetching User Details...');
+      console.log("👤 Fetching User Details...");
       // Fetch User Details
-      const userDetailsResponse = await apiService.getUserDetails(username, password);
+      const userDetailsResponse = await apiService.getUserDetails(
+        username,
+        password
+      );
       if (userDetailsResponse.success && userDetailsResponse.data) {
-        console.log('✅ User details fetched:', userDetailsResponse.data.length, 'items');
+        console.log(
+          "✅ User details fetched:",
+          userDetailsResponse.data.length,
+          "items"
+        );
         setUserDetails(userDetailsResponse.data);
         await StorageManager.saveUserDetails(userDetailsResponse.data);
-        
+
         // Process response like Java code
-        await processUserDetailsResponse(userDetailsResponse.data, username, password);
+        await processUserDetailsResponse(
+          userDetailsResponse.data,
+          username,
+          password
+        );
       } else {
-        console.error('❌ Failed to fetch user details:', userDetailsResponse.error);
+        console.error(
+          "❌ Failed to fetch user details:",
+          userDetailsResponse.error
+        );
       }
 
-      console.log('🚗 Fetching Filter Vehicles...');
+      console.log("🚗 Fetching Filter Vehicles...");
       // Fetch Filter Vehicles (NEW API)
       const vehiclesResponse = await apiService.getFilterVehicle();
       if (vehiclesResponse.success && vehiclesResponse.data) {
-        console.log('✅ Filter Vehicles fetched:', vehiclesResponse.data.length, 'vehicles');
+        console.log(
+          "✅ Filter Vehicles fetched:",
+          vehiclesResponse.data.length,
+          "vehicles"
+        );
         setVehicles(vehiclesResponse.data);
         await StorageManager.saveVehicles(vehiclesResponse.data);
       } else {
-        console.error('❌ Failed to fetch filter vehicles:', vehiclesResponse.error);
+        console.error(
+          "❌ Failed to fetch filter vehicles:",
+          vehiclesResponse.error
+        );
       }
 
-      console.log('📊 Post-login data fetch completed');
+      console.log("📊 Post-login data fetch completed");
     } catch (error) {
       console.error("❌ Error fetching post-login data:", error);
       // Don't fail login if post-login data fetch fails
@@ -236,18 +281,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const selectVehicle = async (vehicle: Vehicle) => {
-    console.log('🚗 Vehicle selected:', vehicle.vehicleNo);
+    console.log("🚗 Vehicle selected:", vehicle.vehicleNo);
     setSelectedVehicle(vehicle);
     await StorageManager.saveSelectedVehicle(vehicle);
   };
 
   const completeAuthentication = () => {
-    console.log('🔓 Completing authentication...');
+    console.log("🔓 Completing authentication...");
     if (user && activeServer && selectedVehicle) {
-      console.log('✅ Authentication completed, showing main app');
+      console.log("✅ Authentication completed, showing main app");
       setIsAuthenticated(true);
     } else {
-      console.warn('⚠️ Cannot complete authentication: missing user, server, or vehicle');
+      console.warn(
+        "⚠️ Cannot complete authentication: missing user, server, or vehicle"
+      );
     }
   };
 

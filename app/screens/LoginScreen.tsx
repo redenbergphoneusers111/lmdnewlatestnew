@@ -72,7 +72,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
       if (success) {
         onLoginSuccess();
       } else {
-        Alert.alert("Login Failed", "Invalid credentials or server error. Please try again.");
+        Alert.alert(
+          "Login Failed",
+          "Invalid credentials or server error. Please try again."
+        );
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -94,6 +97,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
     <StyledSafeAreaView className="flex-1 bg-indigo-600">
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
         className="flex-1"
       >
         <LinearGradient
@@ -119,7 +123,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
           </StyledView>
         </LinearGradient>
 
-        <StyledScrollView className="flex-1 px-6 -mt-8">
+        <StyledScrollView
+          className="flex-1 px-6 -mt-8"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+        >
           {/* Server Status Card */}
           <StyledView className="bg-white rounded-2xl shadow-lg p-6 mb-6">
             <StyledView className="flex-row items-center justify-between mb-4">

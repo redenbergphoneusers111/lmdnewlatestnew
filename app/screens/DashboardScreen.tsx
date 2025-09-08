@@ -42,7 +42,7 @@ const dashboardMetrics: MetricCard[] = [
 const weeklyData = [
   { day: 'Mon', earnings: 280 }, { day: 'Tue', earnings: 340 }, { day: 'Wed', earnings: 290 },
   { day: 'Thu', earnings: 410 }, { day: 'Fri', earnings: 380 }, { day: 'Sat', earnings: 450 },
-  { day: 'Sun', earnings: 320 },
+  { day: 'Sun', earnings: 320 }
 ];
 
 const DashboardScreen: React.FC<DashboardScreenProps> = ({ onMenuPress }) => {

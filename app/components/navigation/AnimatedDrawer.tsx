@@ -1,7 +1,9 @@
 import React from "react";
 import { View, Text, Pressable } from "react-native";
 import Animated, {
+  useSharedValue,
   useAnimatedStyle,
+  withTiming,
   interpolate,
   SharedValue,
 } from "react-native-reanimated";
@@ -14,8 +16,10 @@ import {
   RotateCcw,
   LogOut,
   User,
+  Truck,
 } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
+import { useAuth } from "../../contexts/AuthContext";
 
 interface DrawerItem {
   id: string;
@@ -29,6 +33,7 @@ interface AnimatedDrawerProps {
   onClose: () => void;
   drawerProgress: SharedValue<number>;
   onNavigate?: (route: string) => void;
+  onLogout: () => void;
 }
 
 const drawerItems: DrawerItem[] = [
@@ -46,6 +51,7 @@ const AnimatedDrawer: React.FC<AnimatedDrawerProps> = ({
   drawerProgress,
   onNavigate,
 }) => {
+  const { user, userDetails, selectedVehicle } = useAuth();
   const animatedDrawerStyle = useAnimatedStyle(() => {
     const translateX = interpolate(drawerProgress.value, [0, 1], [-280, 0]);
     return {
@@ -86,11 +92,13 @@ const AnimatedDrawer: React.FC<AnimatedDrawerProps> = ({
             <User size={32} color="#6C63FF" />
           </View>
           <Text className="text-text-primary font-nunito font-bold text-xl">
-            Connor Davidson
+            Admin
           </Text>
-          <Text className="text-text-muted font-nunito text-sm">
-            Delivery Partner
-          </Text>
+          {selectedVehicle && (
+            <Text className="text-text-muted font-nunito text-sm">
+              {selectedVehicle.vehicleNo} - {selectedVehicle.driverName}
+            </Text>
+          )}
         </View>
 
         {/* Menu Items */}

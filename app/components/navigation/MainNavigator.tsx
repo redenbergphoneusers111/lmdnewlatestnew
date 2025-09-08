@@ -14,6 +14,7 @@ import { styled } from "nativewind";
 import AnimatedDrawer from "./AnimatedDrawer";
 import BottomTabNavigator, { BottomTabHandle } from "./BottomTabNavigator";
 import WalletScreen from "../../screens/WalletScreen";
+import LogoutConfirmationDialog from "../ui/LogoutConfirmationDialog";
 
 // Styled components with NativeWind
 const StyledView = styled(View);
@@ -28,6 +29,7 @@ interface MainNavigatorProps {
 
 const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const drawerProgress = useSharedValue(0);
   const tabsRef = useRef<BottomTabHandle>(null);
   const [standaloneRoute, setStandaloneRoute] = useState<string | null>(null);
@@ -54,7 +56,16 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
 
   const handleLogout = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setShowLogoutDialog(true);
+  };
+
+  const handleLogoutConfirm = () => {
+    setShowLogoutDialog(false);
     onLogout();
+  };
+
+  const handleLogoutCancel = () => {
+    setShowLogoutDialog(false);
   };
 
   const handleBackFromStandalone = () => {
@@ -102,75 +113,85 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   };
 
   return (
-    <StyledSafeAreaView className="flex-1 bg-primary-500">
-      <StyledView className="flex-1">
-        <AnimatedDrawer
-          isOpen={isDrawerOpen}
-          onClose={closeDrawer}
-          drawerProgress={drawerProgress}
-          onNavigate={onNavigate}
-        />
-        {/* Backdrop */}
-        <StyledAnimatedView
-          className="absolute inset-0 bg-black"
-          style={backdropStyle}
-        >
-          <StyledPressable className="flex-1" onPress={closeDrawer} />
-        </StyledAnimatedView>
+    <>
+      <StyledSafeAreaView className="flex-1 bg-primary-500">
+        <StyledView className="flex-1">
+          <AnimatedDrawer
+            isOpen={isDrawerOpen}
+            onClose={closeDrawer}
+            drawerProgress={drawerProgress}
+            onNavigate={onNavigate}
+            onLogout={handleLogout}
+          />
+          {/* Backdrop */}
+          <StyledAnimatedView
+            className="absolute inset-0 bg-black"
+            style={backdropStyle}
+          >
+            <StyledPressable className="flex-1" onPress={closeDrawer} />
+          </StyledAnimatedView>
 
-        <StyledAnimatedView
-          className="flex-1 bg-primary-500 overflow-hidden"
-          style={animatedMainStyle}
-        >
-          {standaloneRoute === "wallet" ? (
-            <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
-              <StyledView className="flex-row items-center">
+          <StyledAnimatedView
+            className="flex-1 bg-primary-500 overflow-hidden"
+            style={animatedMainStyle}
+          >
+            {standaloneRoute === "wallet" ? (
+              <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
+                <StyledView className="flex-row items-center">
+                  <StyledPressable
+                    className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
+                    onPress={handleBackFromStandalone}
+                    android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+                  >
+                    <ArrowLeft size={24} color="#FFFFFF" />
+                  </StyledPressable>
+                  <StyledText className="text-white text-xl font-bold ml-2">
+                    Wallet
+                  </StyledText>
+                </StyledView>
+                <StyledView style={{ width: 40, height: 40 }} />
+              </StyledView>
+            ) : (
+              <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
+                <StyledView className="flex-row items-center">
+                  <StyledPressable
+                    className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
+                    onPress={toggleDrawer}
+                    android_ripple={{ color: "rgba(255,255,255,0.2)" }}
+                  >
+                    <Menu size={24} color="#FFFFFF" />
+                  </StyledPressable>
+                  <StyledText className="text-white text-xl font-bold ml-2">
+                    Dashboard
+                  </StyledText>
+                </StyledView>
+
+                {/* Logout Button */}
                 <StyledPressable
                   className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
-                  onPress={handleBackFromStandalone}
+                  onPress={handleLogout}
                   android_ripple={{ color: "rgba(255,255,255,0.2)" }}
                 >
-                  <ArrowLeft size={24} color="#FFFFFF" />
+                  <LogOut size={24} color="#FFFFFF" />
                 </StyledPressable>
-                <StyledText className="text-white text-xl font-bold ml-2">
-                  Wallet
-                </StyledText>
               </StyledView>
-              <StyledView style={{ width: 40, height: 40 }} />
-            </StyledView>
-          ) : (
-            <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
-              <StyledView className="flex-row items-center">
-                <StyledPressable
-                  className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
-                  onPress={toggleDrawer}
-                  android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-                >
-                  <Menu size={24} color="#FFFFFF" />
-                </StyledPressable>
-                <StyledText className="text-white text-xl font-bold ml-2">
-                  Dashboard
-                </StyledText>
-              </StyledView>
+            )}
+            {standaloneRoute === "wallet" ? (
+              <WalletScreen />
+            ) : (
+              <BottomTabNavigator ref={tabsRef} />
+            )}
+          </StyledAnimatedView>
+        </StyledView>
+      </StyledSafeAreaView>
 
-              {/* Logout Button */}
-              <StyledPressable
-                className="w-10 h-10 items-center justify-center rounded-lg active:bg-white/20"
-                onPress={handleLogout}
-                android_ripple={{ color: "rgba(255,255,255,0.2)" }}
-              >
-                <LogOut size={24} color="#FFFFFF" />
-              </StyledPressable>
-            </StyledView>
-          )}
-          {standaloneRoute === "wallet" ? (
-            <WalletScreen />
-          ) : (
-            <BottomTabNavigator ref={tabsRef} />
-          )}
-        </StyledAnimatedView>
-      </StyledView>
-    </StyledSafeAreaView>
+      {/* Logout Confirmation Dialog - Outside main container for proper positioning */}
+      <LogoutConfirmationDialog
+        isVisible={showLogoutDialog}
+        onConfirm={handleLogoutConfirm}
+        onCancel={handleLogoutCancel}
+      />
+    </>
   );
 };
 
