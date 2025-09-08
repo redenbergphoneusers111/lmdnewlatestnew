@@ -35,6 +35,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
 import apiService from "../services/apiService";
+import { DeliveryStage } from "./DeliveryStageDetailsScreen";
 
 interface FilterStatus {
   status: string;
@@ -94,11 +95,15 @@ type OrderType = "Delivery Order" | "Pickup Order" | "Tasks";
 interface RecentOrdersScreenProps {
   initialOrderType?: OrderType;
   initialStatus?: string;
+  tabsRef?: any;
+  navigateToDeliveryStage?: (orderData: any, currentStage: any) => void;
 }
 
 const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
   initialOrderType = "Delivery Order",
   initialStatus = "ALL",
+  tabsRef,
+  navigateToDeliveryStage,
 }) => {
   const { selectedVehicle } = useAuth();
   const [selectedOrderType, setSelectedOrderType] =
@@ -301,6 +306,37 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
     return amount ? `$${amount.toFixed(2)}` : "N/A";
   };
 
+  const getDeliveryStage = (status: string): DeliveryStage => {
+    switch (status) {
+      case "PENDING":
+        return "open";
+      case "OPEN":
+        return "picking"; // OPEN status should show picking layout
+      case "PICKED":
+      case "PICKING":
+        return "picking";
+      case "DISPATCHED":
+      case "DISPATCHING":
+        return "delivered"; // Map dispatching to delivered stage
+      case "DELIVERED":
+        return "delivered";
+      case "COMPLETED":
+      case "CLOSED":
+        return "completed";
+      default:
+        return "open";
+    }
+  };
+
+  const handleOrderPress = (order: RecentOrder) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const currentStage = getDeliveryStage(order.status);
+
+    if (navigateToDeliveryStage) {
+      navigateToDeliveryStage(order, currentStage);
+    }
+  };
+
   const renderTaskItem = ({
     item,
     index,
@@ -395,66 +431,71 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
     const statusColor = getStatusColor(item.status);
 
     return (
-      <Animated.View
-        entering={FadeInDown.delay(index * 100).duration(400)}
-        className="bg-white rounded-lg p-4 mb-3 shadow-lg border-0 mx-2"
-        style={{
-          shadowColor: statusColor,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
+      <Pressable
+        onPress={() => handleOrderPress(item)}
+        android_ripple={{ color: "rgba(0,0,0,0.1)" }}
       >
-        {/* Horizontal Layout with Icon, Content, and Status */}
-        <View className="flex-row items-center">
-          {/* Enhanced Colored Icon Container */}
-          <View
-            className="w-14 h-14 rounded-xl items-center justify-center mr-4"
-            style={{
-              backgroundColor: statusColor,
-              borderWidth: 2,
-              borderColor: statusColor + "40",
-            }}
-          >
-            <StatusIcon size={28} color="white" />
-          </View>
-
-          {/* Content Section with Colorful Elements */}
-          <View className="flex-1">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-gray-900 font-bold text-lg">
-                {item.cardName} - {item.doStr}
-              </Text>
-            </View>
-            <Text className="text-amber-600 font-medium text-sm mb-2">
-              📅 {formatDate(item.docDate)}
-            </Text>
-            <Text className="text-indigo-600 font-medium text-sm">
-              📍 {item.bpfName || "Location not specified"}
-            </Text>
-          </View>
-
-          {/* Enhanced Status Badge */}
-          <View className="items-end justify-end">
+        <Animated.View
+          entering={FadeInDown.delay(index * 100).duration(400)}
+          className="bg-white rounded-lg p-4 mb-3 shadow-lg border-0 mx-2 active:bg-gray-50"
+          style={{
+            shadowColor: statusColor,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          {/* Horizontal Layout with Icon, Content, and Status */}
+          <View className="flex-row items-center">
+            {/* Enhanced Colored Icon Container */}
             <View
-              className="px-3 py-1 rounded-full mb-2"
+              className="w-14 h-14 rounded-xl items-center justify-center mr-4"
               style={{
-                backgroundColor: statusColor + "25",
-                borderWidth: 1,
-                borderColor: statusColor + "50",
+                backgroundColor: statusColor,
+                borderWidth: 2,
+                borderColor: statusColor + "40",
               }}
             >
-              <Text
-                style={{ color: statusColor }}
-                className="font-medium text-xs"
-              >
-                {item.status}
+              <StatusIcon size={28} color="white" />
+            </View>
+
+            {/* Content Section with Colorful Elements */}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-900 font-bold text-lg">
+                  {item.cardName} - {item.doStr}
+                </Text>
+              </View>
+              <Text className="text-amber-600 font-medium text-sm mb-2">
+                📅 {formatDate(item.docDate)}
+              </Text>
+              <Text className="text-indigo-600 font-medium text-sm">
+                📍 {item.bpfName || "Location not specified"}
               </Text>
             </View>
+
+            {/* Enhanced Status Badge */}
+            <View className="items-end justify-end">
+              <View
+                className="px-3 py-1 rounded-full mb-2"
+                style={{
+                  backgroundColor: statusColor + "25",
+                  borderWidth: 1,
+                  borderColor: statusColor + "50",
+                }}
+              >
+                <Text
+                  style={{ color: statusColor }}
+                  className="font-medium text-xs"
+                >
+                  {item.status}
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </Pressable>
     );
   };
 

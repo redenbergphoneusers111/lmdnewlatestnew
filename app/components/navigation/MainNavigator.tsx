@@ -14,6 +14,7 @@ import { styled } from "nativewind";
 import AnimatedDrawer from "./AnimatedDrawer";
 import BottomTabNavigator, { BottomTabHandle } from "./BottomTabNavigator";
 import WalletScreen from "../../screens/WalletScreen";
+import DeliveryStageDetailsScreen from "../../screens/DeliveryStageDetailsScreen";
 import LogoutConfirmationDialog from "../ui/LogoutConfirmationDialog";
 
 // Styled components with NativeWind
@@ -112,6 +113,13 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
     closeDrawer();
   };
 
+  const navigateToDeliveryStage = (orderData: any, currentStage: any) => {
+    setStandaloneRoute("delivery-stage");
+    setStandaloneRouteData({ orderData, currentStage });
+  };
+
+  const [standaloneRouteData, setStandaloneRouteData] = useState<any>(null);
+
   return (
     <>
       <StyledSafeAreaView className="flex-1 bg-primary-500">
@@ -151,6 +159,8 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
                 </StyledView>
                 <StyledView style={{ width: 40, height: 40 }} />
               </StyledView>
+            ) : standaloneRoute === "delivery-stage" ? (
+              <StyledView style={{ width: 40, height: 40 }} />
             ) : (
               <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
                 <StyledView className="flex-row items-center">
@@ -178,8 +188,23 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
             )}
             {standaloneRoute === "wallet" ? (
               <WalletScreen />
+            ) : standaloneRoute === "delivery-stage" ? (
+              <DeliveryStageDetailsScreen
+                orderData={standaloneRouteData?.orderData}
+                currentStage={standaloneRouteData?.currentStage}
+                onBack={handleBackFromStandalone}
+                onStageChange={(newStage) => {
+                  setStandaloneRouteData((prev) => ({
+                    ...prev,
+                    currentStage: newStage,
+                  }));
+                }}
+              />
             ) : (
-              <BottomTabNavigator ref={tabsRef} />
+              <BottomTabNavigator
+                ref={tabsRef}
+                navigateToDeliveryStage={navigateToDeliveryStage}
+              />
             )}
           </StyledAnimatedView>
         </StyledView>
