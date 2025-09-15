@@ -7,6 +7,7 @@ import {
   RefreshControl,
   ActivityIndicator,
   FlatList,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Animated, {
@@ -35,6 +36,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../contexts/AuthContext";
 import apiService from "../services/apiService";
+import pickupOrderService, {
+  PickupOrder,
+  PickupStage,
+} from "../services/pickupOrderService";
+import taskService, { Task, TaskStage } from "../services/taskService";
 import { DeliveryStage } from "./DeliveryStageDetailsScreen";
 
 interface FilterStatus {
@@ -88,6 +94,7 @@ interface AssignedTask {
   isActive: boolean;
   iscompleted: boolean;
   driverName: string;
+  status?: string;
 }
 
 type OrderType = "Delivery Order" | "Pickup Order" | "Tasks";
@@ -97,6 +104,11 @@ interface RecentOrdersScreenProps {
   initialStatus?: string;
   tabsRef?: any;
   navigateToDeliveryStage?: (orderData: any, currentStage: any) => void;
+  navigateToPickupStage?: (
+    orderData: PickupOrder,
+    currentStage: PickupStage
+  ) => void;
+  navigateToTaskStage?: (taskData: Task, currentStage: TaskStage) => void;
 }
 
 const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
@@ -104,6 +116,8 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
   initialStatus = "ALL",
   tabsRef,
   navigateToDeliveryStage,
+  navigateToPickupStage,
+  navigateToTaskStage,
 }) => {
   const { selectedVehicle } = useAuth();
   const [selectedOrderType, setSelectedOrderType] =
@@ -111,6 +125,7 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string>(initialStatus);
   const [filterStatuses, setFilterStatuses] = useState<FilterStatus[]>([]);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
+  const [pickupOrders, setPickupOrders] = useState<PickupOrder[]>([]);
   const [assignedTasks, setAssignedTasks] = useState<AssignedTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -194,43 +209,55 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
       setLoading(true);
 
       if (selectedOrderType === "Tasks") {
-        // Use the AssignedTask API endpoint for Tasks
-        let endpoint = `/api/AssignedTask?vehicleId=${selectedVehicle.id}&taskId=&status=`;
-
-        // Add status filter if not ALL
-        if (selectedStatus !== "ALL") {
-          endpoint += selectedStatus;
-        }
-
-        const response = await apiService.makeRequest(endpoint);
+        // Use the task service for tasks
+        const response = await taskService.getTasks(
+          selectedVehicle.id,
+          selectedStatus
+        );
         if (response.success && response.data) {
           setAssignedTasks(response.data as AssignedTask[]);
           setRecentOrders([]); // Clear recent orders when showing tasks
+          setPickupOrders([]); // Clear pickup orders when showing tasks
         } else {
           setAssignedTasks([]);
           setRecentOrders([]);
+          setPickupOrders([]);
+        }
+      } else if (selectedOrderType === "Pickup Order") {
+        // Use the pickup order service for pickup orders
+        const response = await pickupOrderService.getPickupOrders(
+          selectedVehicle.id,
+          today,
+          selectedStatus
+        );
+        if (response.success && response.data) {
+          setPickupOrders(response.data as PickupOrder[]);
+          setRecentOrders([]); // Clear delivery orders when showing pickup orders
+          setAssignedTasks([]); // Clear tasks when showing pickup orders
+        } else {
+          setPickupOrders([]);
+          setRecentOrders([]);
+          setAssignedTasks([]);
         }
       } else {
-        // Use the RecentOrders API for Delivery and Pickup Orders
-        let endpoint = "";
-        if (selectedOrderType === "Delivery Order") {
-          endpoint = `/api/RecentOrders?cdate=${today}&vehicleId=${selectedVehicle.id}&status=${selectedStatus}&menuType=Delivery%20Order`;
-        } else if (selectedOrderType === "Pickup Order") {
-          endpoint = `/api/RecentOrders?cdate=${today}&vehicleId=${selectedVehicle.id}&status=${selectedStatus}&menuType=Pickup%20Order`;
-        }
+        // Use the RecentOrders API for Delivery Orders only
+        const endpoint = `/api/RecentOrders?cdate=${today}&vehicleId=${selectedVehicle.id}&status=${selectedStatus}&menuType=Delivery%20Order`;
 
         const response = await apiService.makeRequest(endpoint);
         if (response.success && response.data) {
           setRecentOrders(response.data as RecentOrder[]);
-          setAssignedTasks([]); // Clear tasks when showing orders
+          setPickupOrders([]); // Clear pickup orders when showing delivery orders
+          setAssignedTasks([]); // Clear tasks when showing delivery orders
         } else {
           setRecentOrders([]);
+          setPickupOrders([]);
           setAssignedTasks([]);
         }
       }
     } catch (error) {
       console.error("Error loading recent orders:", error);
       setRecentOrders([]);
+      setPickupOrders([]);
       setAssignedTasks([]);
     } finally {
       setLoading(false);
@@ -241,6 +268,25 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
   const handleRefresh = () => {
     setRefreshing(true);
     loadRecentOrders();
+  };
+
+  // Helper functions to filter orders
+  const getActiveOrders = (orders: RecentOrder[]) => {
+    return orders.filter((order: RecentOrder) => !order.isCancelled);
+  };
+
+  const getCancelledOrders = (orders: RecentOrder[]) => {
+    return orders.filter((order: RecentOrder) => order.isCancelled);
+  };
+
+  // Filter orders based on selected status
+  const getFilteredOrders = (orders: RecentOrder[]) => {
+    if (selectedStatus === "CANCELLED") {
+      return getCancelledOrders(orders);
+    } else {
+      // For all other statuses (OPEN, PICKED, DISPATCHED, COMPLETED, ALL), show only active orders
+      return getActiveOrders(orders);
+    }
   };
 
   const getStatusColor = (status: string, isCompleted?: boolean) => {
@@ -294,16 +340,23 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "Invalid Date";
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
   };
 
-  const formatAmount = (amount: number) => {
-    return amount ? `$${amount.toFixed(2)}` : "N/A";
+  const formatAmount = (amount: number | null | undefined) => {
+    if (amount === null || amount === undefined || isNaN(amount)) return "N/A";
+    return `$${amount.toFixed(2)}`;
   };
 
   const getDeliveryStage = (status: string): DeliveryStage => {
@@ -328,12 +381,52 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
     }
   };
 
+  const getPickupStage = (status: string): PickupStage => {
+    return pickupOrderService.getPickupStage(status);
+  };
+
+  const getTaskStage = (status: string, isCompleted: boolean): TaskStage => {
+    return taskService.getTaskStage(status, isCompleted);
+  };
+
   const handleOrderPress = (order: RecentOrder) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const currentStage = getDeliveryStage(order.status);
 
     if (navigateToDeliveryStage) {
       navigateToDeliveryStage(order, currentStage);
+    }
+  };
+
+  const handlePickupOrderPress = (order: PickupOrder) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const currentStage = getPickupStage(order.status);
+
+    if (navigateToPickupStage) {
+      navigateToPickupStage(order, currentStage);
+    }
+  };
+
+  const handleTaskPress = (task: AssignedTask) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    // Prevent opening completed tasks
+    if (task.iscompleted) {
+      Alert.alert(
+        "Task Already Completed",
+        "This task has already been completed and cannot be opened.",
+        [{ text: "OK", style: "default" }]
+      );
+      return;
+    }
+
+    const currentStage = getTaskStage(
+      task.status || "PENDING",
+      task.iscompleted
+    );
+
+    if (navigateToTaskStage) {
+      navigateToTaskStage(task as Task, currentStage);
     }
   };
 
@@ -349,74 +442,82 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
     const statusText = item.iscompleted ? "Completed" : "PENDING";
 
     return (
-      <Animated.View
-        entering={FadeInDown.delay(index * 100).duration(400)}
-        className="bg-white rounded-lg p-4 mb-3 shadow-lg border-0 mx-2"
-        style={{
-          shadowColor: statusColor,
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.2,
-          shadowRadius: 8,
-          elevation: 8,
-        }}
+      <Pressable
+        onPress={() => handleTaskPress(item)}
+        android_ripple={{ color: "rgba(0,0,0,0.1)" }}
+        disabled={item.iscompleted}
       >
-        {/* Horizontal Layout with Icon, Content, and Status */}
-        <View className="flex-row items-center">
-          {/* Enhanced Colored Icon Container */}
-          <View
-            className="w-14 h-14 rounded-xl items-center justify-center mr-4"
-            style={{
-              backgroundColor: statusColor,
-              borderWidth: 2,
-              borderColor: statusColor + "40",
-            }}
-          >
-            <StatusIcon size={28} color="white" />
-          </View>
-
-          {/* Content Section with Colorful Elements */}
-          <View className="flex-1">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-gray-900 font-bold text-lg">
-                {item.taskName}
-              </Text>
-              <Text className="text-blue-600 font-bold px-2 text-sm">
-                #{item.taskId}
-              </Text>
-            </View>
-            <Text className="text-amber-600 font-medium text-sm mb-2">
-              📅 {formatDate(item.dueDate)}
-            </Text>
-            <Text className="text-indigo-600 font-medium text-sm">
-              📝 {item.description || "No description"}
-            </Text>
-            {item.remarks && (
-              <Text className="text-gray-600 font-medium text-xs mt-1">
-                💬 {item.remarks}
-              </Text>
-            )}
-          </View>
-
-          {/* Enhanced Status Badge */}
-          <View className="items-end justify-end">
+        <Animated.View
+          entering={FadeInDown.delay(index * 100).duration(400)}
+          className={`bg-white rounded-lg p-4 mb-3 shadow-lg border-0 mx-2 ${
+            item.iscompleted ? "opacity-60" : "active:bg-gray-50"
+          }`}
+          style={{
+            shadowColor: statusColor,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          {/* Horizontal Layout with Icon, Content, and Status */}
+          <View className="flex-row items-center">
+            {/* Enhanced Colored Icon Container */}
             <View
-              className="px-3 py-1 rounded-full mb-2"
+              className="w-14 h-14 rounded-xl items-center justify-center mr-4"
               style={{
-                backgroundColor: statusColor + "25",
-                borderWidth: 1,
-                borderColor: statusColor + "50",
+                backgroundColor: statusColor,
+                borderWidth: 2,
+                borderColor: statusColor + "40",
               }}
             >
-              <Text
-                style={{ color: statusColor }}
-                className="font-medium text-xs"
-              >
-                {statusText}
+              <StatusIcon size={28} color="white" />
+            </View>
+
+            {/* Content Section with Colorful Elements */}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-900 font-bold text-lg">
+                  {item.taskName}
+                </Text>
+                <Text className="text-blue-600 font-bold px-2 text-sm">
+                  #{item.taskId}
+                </Text>
+              </View>
+              <Text className="text-amber-600 font-medium text-sm mb-2">
+                📅 {formatDate(item.dueDate)}
               </Text>
+              <Text className="text-indigo-600 font-medium text-sm">
+                📝 {item.description || "No description"}
+              </Text>
+              {item.remarks && (
+                <Text className="text-gray-600 font-medium text-xs mt-1">
+                  💬 {item.remarks}
+                </Text>
+              )}
+            </View>
+
+            {/* Enhanced Status Badge */}
+            <View className="items-end justify-end">
+              <View
+                className="px-3 py-1 rounded-full mb-2"
+                style={{
+                  backgroundColor: statusColor + "25",
+                  borderWidth: 1,
+                  borderColor: statusColor + "50",
+                }}
+              >
+                <Text
+                  style={{ color: statusColor }}
+                  className="font-medium text-xs"
+                >
+                  {statusText}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </Pressable>
     );
   };
 
@@ -499,6 +600,90 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
     );
   };
 
+  const renderPickupOrderItem = ({
+    item,
+    index,
+  }: {
+    item: PickupOrder;
+    index: number;
+  }) => {
+    const StatusIcon = getStatusIcon(item.status);
+    const statusColor = getStatusColor(item.status);
+
+    return (
+      <Pressable
+        onPress={() => handlePickupOrderPress(item)}
+        android_ripple={{ color: "rgba(0,0,0,0.1)" }}
+      >
+        <Animated.View
+          entering={FadeInDown.delay(index * 100).duration(400)}
+          className="bg-white rounded-lg p-4 mb-3 shadow-lg border-0 mx-2 active:bg-gray-50"
+          style={{
+            shadowColor: statusColor,
+            shadowOffset: { width: 0, height: 4 },
+            shadowOpacity: 0.2,
+            shadowRadius: 8,
+            elevation: 8,
+          }}
+        >
+          {/* Horizontal Layout with Icon, Content, and Status */}
+          <View className="flex-row items-center">
+            {/* Enhanced Colored Icon Container */}
+            <View
+              className="w-14 h-14 rounded-xl items-center justify-center mr-4"
+              style={{
+                backgroundColor: statusColor,
+                borderWidth: 2,
+                borderColor: statusColor + "40",
+              }}
+            >
+              <StatusIcon size={28} color="white" />
+            </View>
+
+            {/* Content Section with Colorful Elements */}
+            <View className="flex-1">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text className="text-gray-900 font-bold text-lg">
+                  {item.cardName} - {item.doStr}
+                </Text>
+              </View>
+              <Text className="text-amber-600 font-medium text-sm mb-2">
+                📅 {formatDate(item.docDate)}
+              </Text>
+              <Text className="text-indigo-600 font-medium text-sm">
+                📍 {item.bpfName || "Location not specified"}
+              </Text>
+              {item.pickupLocation && (
+                <Text className="text-purple-600 font-medium text-sm mt-1">
+                  📦 Pickup: {item.pickupLocation}
+                </Text>
+              )}
+            </View>
+
+            {/* Enhanced Status Badge */}
+            <View className="items-end justify-end">
+              <View
+                className="px-3 py-1 rounded-full"
+                style={{
+                  backgroundColor: statusColor + "25",
+                  borderWidth: 1,
+                  borderColor: statusColor + "50",
+                }}
+              >
+                <Text
+                  style={{ color: statusColor }}
+                  className="font-medium text-xs"
+                >
+                  {item.status}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </Animated.View>
+      </Pressable>
+    );
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-gray-50">
       {/* Header */}
@@ -560,7 +745,9 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
             <Text className="text-gray-900 font-medium text-sm">
               {selectedOrderType === "Tasks"
                 ? `${assignedTasks.length} Tasks Found`
-                : `${recentOrders.length} Orders Found`}
+                : selectedOrderType === "Pickup Order"
+                ? `${pickupOrders.length} Pickup Orders Found`
+                : `${recentOrders.length} Delivery Orders Found`}
             </Text>
             <Pressable
               onPress={() => setShowFilters(!showFilters)}
@@ -656,9 +843,42 @@ const RecentOrdersScreen: React.FC<RecentOrdersScreenProps> = ({
               </Text>
             </Animated.View>
           )
-        ) : recentOrders.length > 0 ? (
+        ) : selectedOrderType === "Pickup Order" ? (
+          pickupOrders.length > 0 ? (
+            <FlatList
+              data={pickupOrders}
+              renderItem={renderPickupOrderItem}
+              keyExtractor={(item) => item.id.toString()}
+              contentContainerStyle={{
+                paddingHorizontal: 8,
+                paddingBottom: 20,
+                paddingTop: 8,
+              }}
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                />
+              }
+            />
+          ) : (
+            <Animated.View
+              entering={FadeInUp.delay(600).duration(500)}
+              className="flex-1 items-center justify-center px-4"
+            >
+              <Package size={48} color="#9ca3af" />
+              <Text className="text-gray-500 font-medium text-base mt-3 text-center">
+                No pickup orders found
+              </Text>
+              <Text className="text-gray-400 text-xs mt-1 text-center">
+                Try adjusting your filters or check back later
+              </Text>
+            </Animated.View>
+          )
+        ) : getFilteredOrders(recentOrders).length > 0 ? (
           <FlatList
-            data={recentOrders}
+            data={getFilteredOrders(recentOrders)}
             renderItem={renderOrderItem}
             keyExtractor={(item) => item.id.toString()}
             contentContainerStyle={{

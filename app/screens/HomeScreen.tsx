@@ -112,9 +112,17 @@ const StatsCard: React.FC<{
 
 interface HomeScreenProps {
   tabsRef?: any;
+  navigateToDeliveryStage?: (orderData: any, currentStage: any) => void;
+  navigateToPickupStage?: (orderData: any, currentStage: any) => void;
+  navigateToTaskStage?: (taskData: any, currentStage: any) => void;
 }
 
-const HomeScreen: React.FC<HomeScreenProps> = ({ tabsRef }) => {
+const HomeScreen: React.FC<HomeScreenProps> = ({
+  tabsRef,
+  navigateToDeliveryStage,
+  navigateToPickupStage,
+  navigateToTaskStage,
+}) => {
   const { selectedVehicle, userDetails } = useAuth();
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -316,9 +324,31 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ tabsRef }) => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     // Navigate to RecentOrdersScreen with Delivery Order type and specific status
                     if (tabsRef) {
+                      // Map category to correct status
+                      let status = "ALL";
+                      switch (s.category) {
+                        case "Picking":
+                          status = "OPEN";
+                          break;
+                        case "Dispatching":
+                          status = "PICKED";
+                          break;
+                        case "Confirmation":
+                          status = "DISPATCHED";
+                          break;
+                        case "Cancelled":
+                          status = "CANCELLED";
+                          break;
+                        case "Completed":
+                          status = "COMPLETED";
+                          break;
+                        default:
+                          status = s.category.toUpperCase();
+                      }
+
                       tabsRef.selectTab("recent order", {
                         initialOrderType: "Delivery Order",
-                        initialStatus: s.category.toUpperCase(),
+                        initialStatus: status,
                       });
                     }
                   }}
@@ -356,9 +386,28 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ tabsRef }) => {
                   onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     if (tabsRef) {
+                      // Map pickup order menu categories to correct filter statuses
+                      let status = "ALL";
+                      switch (s.category) {
+                        case "Pickup Order":
+                          status = "OPEN";
+                          break;
+                        case "Return Confirmation":
+                          status = "REQUESTED";
+                          break;
+                        case "Completed":
+                          status = "CLOSED";
+                          break;
+                        case "Cancelled":
+                          status = "CANCELLED";
+                          break;
+                        default:
+                          status = s.category.toUpperCase();
+                      }
+
                       tabsRef.selectTab("recent order", {
                         initialOrderType: "Pickup Order",
-                        initialStatus: s.category.toUpperCase(),
+                        initialStatus: status,
                       });
                     }
                   }}

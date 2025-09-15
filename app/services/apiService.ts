@@ -731,6 +731,57 @@ class ApiService {
   hasValidTokens(): boolean {
     return !!(this.accessToken && this.tokenType);
   }
+
+  // Fetch Assigned Task Details
+  async getAssignedTaskDetails(
+    vehicleId: number,
+    id: number
+  ): Promise<ApiResponse<any[]>> {
+    const endpoint = `/api/AssignedTask?vehicleId=${vehicleId}&id=${id}`;
+
+    console.log("📋 ===== ASSIGNED TASK DETAILS API REQUEST =====");
+    console.log("📍 Full URL:", `${this.baseUrl}${endpoint}`);
+    console.log("📋 Request Parameters:", {
+      vehicleId: vehicleId,
+      id: id,
+    });
+    console.log(
+      "🔐 Authorization Header:",
+      this.getAuthHeader().substring(0, 25) + "..."
+    );
+    console.log("📤 Request Method: GET");
+
+    const result = await this.makeRequest<any[]>(endpoint);
+
+    console.log("📋 ===== ASSIGNED TASK DETAILS API RESPONSE =====");
+    console.log("✅ Request Success:", result.success);
+    console.log("📊 HTTP Status Code:", result.statusCode);
+
+    if (result.success && result.data) {
+      console.log("📄 COMPLETE ASSIGNED TASK DETAILS JSON RESPONSE:");
+      console.log(JSON.stringify(result.data, null, 2));
+      console.log("📈 Total Task Detail Records:", result.data.length);
+
+      if (result.data.length > 0) {
+        const taskDetail = result.data[0];
+        console.log("📋 Task Detail Summary:");
+        console.log("  - ID:", taskDetail.id);
+        console.log("  - Task Name:", taskDetail.taskName);
+        console.log("  - Description:", taskDetail.description);
+        console.log("  - Due Date:", taskDetail.dueDate);
+        console.log("  - Driver Name:", taskDetail.driverName);
+        console.log("  - Is Completed:", taskDetail.iscompleted);
+      }
+    } else if (!result.success) {
+      console.log("❌ ASSIGNED TASK DETAILS API ERROR DETAILS:");
+      console.log("  - Error Message:", result.error);
+      console.log("  - Status Code:", result.statusCode);
+    }
+
+    console.log("📋 ===== END ASSIGNED TASK DETAILS API =====");
+
+    return result;
+  }
 }
 
 // Export singleton instance

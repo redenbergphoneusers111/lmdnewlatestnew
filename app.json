@@ -1,22 +1,42 @@
 {
-    "expo": {
-      "name": "react-native-expo-starter",
-      "slug": "react-native-expo-starter",
-      "version": "1.0.0",
-      "orientation": "portrait",
-      "scheme": "myapp",
-      "userInterfaceStyle": "automatic",
-      "newArchEnabled": true,
-      "ios": {
-        "supportsTablet": true
-      },
-      "web": {
-        "bundler": "metro",
-        "output": "single"
-      },
-      "plugins": ["expo-router"],
-      "experiments": {
-        "typedRoutes": true
+  "expo": {
+    "name": "react-native-expo-starter",
+    "slug": "react-native-expo-starter",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "myapp",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs access to camera to take photos for order confirmation.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images for order confirmation."
       }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "The app accesses your photos to let you share them.",
+          "cameraPermission": "The app accesses your camera to let you take photos."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
     }
   }
+}

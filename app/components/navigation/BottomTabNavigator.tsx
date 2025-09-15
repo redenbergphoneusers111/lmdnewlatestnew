@@ -49,6 +49,8 @@ const tabs: TabItem[] = [
 
 interface BottomTabNavigatorProps {
   navigateToDeliveryStage?: (orderData: any, currentStage: any) => void;
+  navigateToPickupStage?: (orderData: any, currentStage: any) => void;
+  navigateToTaskStage?: (taskData: any, currentStage: any) => void;
 }
 
 const BottomTabNavigator = forwardRef<BottomTabHandle, BottomTabNavigatorProps>(
@@ -106,6 +108,8 @@ const BottomTabNavigator = forwardRef<BottomTabHandle, BottomTabNavigatorProps>(
             {...screenParams}
             tabsRef={exposedRef}
             navigateToDeliveryStage={props.navigateToDeliveryStage}
+            navigateToPickupStage={props.navigateToPickupStage}
+            navigateToTaskStage={props.navigateToTaskStage}
           />
         </StyledView>
 

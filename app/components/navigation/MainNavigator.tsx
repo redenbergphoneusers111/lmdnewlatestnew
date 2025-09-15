@@ -15,6 +15,14 @@ import AnimatedDrawer from "./AnimatedDrawer";
 import BottomTabNavigator, { BottomTabHandle } from "./BottomTabNavigator";
 import WalletScreen from "../../screens/WalletScreen";
 import DeliveryStageDetailsScreen from "../../screens/DeliveryStageDetailsScreen";
+import PickupStageDetailsScreen, {
+  PickupStage,
+} from "../../screens/PickupStageDetailsScreen";
+import TaskStageDetailsScreen, {
+  TaskStage,
+} from "../../screens/TaskStageDetailsScreen";
+import { PickupOrder } from "../../services/pickupOrderService";
+import { Task } from "../../services/taskService";
 import LogoutConfirmationDialog from "../ui/LogoutConfirmationDialog";
 
 // Styled components with NativeWind
@@ -118,6 +126,19 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
     setStandaloneRouteData({ orderData, currentStage });
   };
 
+  const navigateToPickupStage = (
+    orderData: PickupOrder,
+    currentStage: PickupStage
+  ) => {
+    setStandaloneRoute("pickup-stage");
+    setStandaloneRouteData({ orderData, currentStage });
+  };
+
+  const navigateToTaskStage = (taskData: Task, currentStage: TaskStage) => {
+    setStandaloneRoute("task-stage");
+    setStandaloneRouteData({ taskData, currentStage });
+  };
+
   const [standaloneRouteData, setStandaloneRouteData] = useState<any>(null);
 
   return (
@@ -161,6 +182,10 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
               </StyledView>
             ) : standaloneRoute === "delivery-stage" ? (
               <StyledView style={{ width: 40, height: 40 }} />
+            ) : standaloneRoute === "pickup-stage" ? (
+              <StyledView style={{ width: 40, height: 40 }} />
+            ) : standaloneRoute === "task-stage" ? (
+              <StyledView style={{ width: 40, height: 40 }} />
             ) : (
               <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
                 <StyledView className="flex-row items-center">
@@ -200,10 +225,36 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
                   }));
                 }}
               />
+            ) : standaloneRoute === "pickup-stage" ? (
+              <PickupStageDetailsScreen
+                orderData={standaloneRouteData?.orderData}
+                currentStage={standaloneRouteData?.currentStage}
+                onBack={handleBackFromStandalone}
+                onStageChange={(newStage) => {
+                  setStandaloneRouteData((prev) => ({
+                    ...prev,
+                    currentStage: newStage,
+                  }));
+                }}
+              />
+            ) : standaloneRoute === "task-stage" ? (
+              <TaskStageDetailsScreen
+                taskData={standaloneRouteData?.taskData}
+                currentStage={standaloneRouteData?.currentStage}
+                onBack={handleBackFromStandalone}
+                onStageChange={(newStage) => {
+                  setStandaloneRouteData((prev) => ({
+                    ...prev,
+                    currentStage: newStage,
+                  }));
+                }}
+              />
             ) : (
               <BottomTabNavigator
                 ref={tabsRef}
                 navigateToDeliveryStage={navigateToDeliveryStage}
+                navigateToPickupStage={navigateToPickupStage}
+                navigateToTaskStage={navigateToTaskStage}
               />
             )}
           </StyledAnimatedView>
