@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
-import { View, Text, Dimensions, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect } from "react";
+import { View, Text, Dimensions, Image } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,11 +8,11 @@ import Animated, {
   withSequence,
   withDelay,
   runOnJS,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
-import { styled } from 'nativewind';
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import { styled } from "nativewind";
 
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -24,14 +24,17 @@ interface SplashScreenProps {
   autoFinish?: boolean;
 }
 
-const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, autoFinish = true }) => {
+const SplashScreen: React.FC<SplashScreenProps> = ({
+  onFinish,
+  autoFinish = true,
+}) => {
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
   const textTranslateY = useSharedValue(50);
 
   useEffect(() => {
-    console.log('SplashScreen useEffect triggered');
+    console.log("SplashScreen useEffect triggered");
 
     // Animate logo
     logoScale.value = withSequence(
@@ -48,11 +51,13 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, autoFinish = true
     let timer: ReturnType<typeof setTimeout> | null = null;
     if (autoFinish) {
       timer = setTimeout(() => {
-        console.log('⏰ Splash screen auto-finishing after 2.5 seconds');
+        console.log("⏰ Splash screen auto-finishing after 2.5 seconds");
         runOnJS(onFinish)();
       }, 2500);
     } else {
-      console.log('⏸️ Splash screen waiting for external finish (autoFinish=false)');
+      console.log(
+        "⏸️ Splash screen waiting for external finish (autoFinish=false)"
+      );
     }
 
     return () => {
@@ -73,7 +78,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, autoFinish = true
   return (
     <StyledSafeAreaView className="flex-1">
       <LinearGradient
-        colors={['#4F46E5', '#7C3AED', '#EC4899']}
+        colors={["#4F46E5", "#7C3AED", "#EC4899"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ flex: 1 }}
@@ -82,13 +87,15 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish, autoFinish = true
           {/* Logo */}
           <StyledAnimatedView
             className="w-32 h-32 bg-white/100 rounded-full items-center justify-center mb-8"
-            style={[logoAnimatedStyle, { overflow: 'hidden' }]}
+            style={[logoAnimatedStyle, { overflow: "hidden" }]}
           >
             <StyledView className="w-20 h-20 items-center justify-center">
               <Image
-                source={require('../../assets/lmdlogo.png')} // Verify this path
-                style={{ width: '100%', height: '100%', resizeMode: 'contain' }}
-                onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+                source={require("../../assets/lmdlogo.png")}
+                style={{ width: "100%", height: "100%", resizeMode: "contain" }}
+                onError={(e) =>
+                  console.log("Image load error:", e.nativeEvent.error)
+                }
               />
             </StyledView>
           </StyledAnimatedView>

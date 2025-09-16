@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "react-native-expo-starter",
-    "slug": "react-native-expo-starter",
+    "name": "Last Mile Delivery",
+    "slug": "last-mile-delivery",
     "version": "1.0.0",
     "orientation": "portrait",
-    "scheme": "myapp",
+    "scheme": "lmd",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/lmdlogo.png",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {

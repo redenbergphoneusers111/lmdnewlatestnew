@@ -11,7 +11,12 @@ import { useAuth } from "../../contexts/AuthContext";
 
 const StyledView = styled(View);
 
-type AuthScreen = "splash" | "serverSetup" | "serverList" | "login" | "vehicleSelection";
+type AuthScreen =
+  | "splash"
+  | "serverSetup"
+  | "serverList"
+  | "login"
+  | "vehicleSelection";
 
 interface AuthNavigatorProps {
   onAuthComplete: () => void;
@@ -34,17 +39,17 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
 
   const checkInitialState = async () => {
     try {
-      console.log('🔍 Checking initial app state...');
+      console.log("🔍 Checking initial app state...");
       const firstTimeSetup = await StorageManager.isFirstTimeSetup();
       const userAuth = await StorageManager.getUserAuth();
       const servers = await StorageManager.getServerConfigs();
       const selectedVehicle = await StorageManager.getSelectedVehicle();
 
-      console.log('📊 Initial state:', {
+      console.log("📊 Initial state:", {
         firstTimeSetup,
         isLoggedIn: userAuth.isLoggedIn,
         serverCount: servers.length,
-        hasSelectedVehicle: !!selectedVehicle
+        hasSelectedVehicle: !!selectedVehicle,
       });
 
       setIsFirstTime(firstTimeSetup);
@@ -52,31 +57,31 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
 
       if (userAuth.isLoggedIn && servers.length > 0) {
         // User is already logged in and has servers
-        console.log('👤 User previously logged in, refreshing auth state...');
+        console.log("👤 User previously logged in, refreshing auth state...");
         await refreshAuthState();
 
         if (selectedVehicle) {
           // Vehicle already selected - go to main app
-          console.log('🚗 Vehicle already selected, going to main app');
+          console.log("🚗 Vehicle already selected, going to main app");
           // Finish splash and go to main app
           handleSplashFinish();
           onAuthComplete();
         } else {
           // No vehicle selected - go to vehicle selection
-          console.log('🚗 No vehicle selected, going to vehicle selection');
+          console.log("🚗 No vehicle selected, going to vehicle selection");
           // Finish splash and go to vehicle selection
           handleSplashFinish();
           setCurrentScreen("vehicleSelection");
         }
       } else {
         // First time or not logged in - go to login after splash
-        console.log('🆕 First time or not logged in, going to login');
+        console.log("🆕 First time or not logged in, going to login");
         // Finish splash and go to login
         handleSplashFinish();
         setCurrentScreen("login");
       }
     } catch (error) {
-      console.error('❌ Error checking initial state:', error);
+      console.error("❌ Error checking initial state:", error);
       // Finish splash and go to login on error
       handleSplashFinish();
       setCurrentScreen("login");
@@ -84,18 +89,20 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
   };
 
   const handleSplashFinish = () => {
-    console.log('🌊 Splash screen finished');
+    console.log("🌊 Splash screen finished");
     if (hasCheckedInitialState) {
       // Initial state already checked, screen should already be set
-      console.log('📋 Initial state already checked, screen should be set');
+      console.log("📋 Initial state already checked, screen should be set");
       return;
     }
     // Auto-finish case - go to login
-    console.log('🆕 Auto-finish splash, going to login');
+    console.log("🆕 Auto-finish splash, going to login");
     setCurrentScreen("login");
   };
 
-  const handleServerSetupComplete = () => {
+  const handleServerSetupComplete = async () => {
+    // Refresh auth state to ensure the new server is properly loaded
+    await refreshAuthState();
     setCurrentScreen("serverList");
   };
 
@@ -114,13 +121,13 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
   };
 
   const handleLoginSuccess = async () => {
-    console.log('🎯 Login successful, navigating to vehicle selection');
+    console.log("🎯 Login successful, navigating to vehicle selection");
     await refreshAuthState();
     setCurrentScreen("vehicleSelection");
   };
 
   const handleVehicleSelected = async () => {
-    console.log('🎯 Vehicle selected, completing authentication');
+    console.log("🎯 Vehicle selected, completing authentication");
     await refreshAuthState();
     completeAuthentication();
     onAuthComplete();
@@ -137,7 +144,12 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
   const renderScreen = () => {
     switch (currentScreen) {
       case "splash":
-        return <SplashScreen onFinish={handleSplashFinish} autoFinish={!hasCheckedInitialState} />;
+        return (
+          <SplashScreen
+            onFinish={handleSplashFinish}
+            autoFinish={!hasCheckedInitialState}
+          />
+        );
 
       case "serverSetup":
         return (

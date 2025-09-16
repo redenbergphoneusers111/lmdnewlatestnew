@@ -69,9 +69,15 @@ const ServerSetupScreen: React.FC<ServerSetupScreenProps> = ({
 
       // Save the new server configuration
       const savedConfig = await StorageManager.saveServerConfig(newConfig);
+      console.log("✅ Server saved:", savedConfig);
 
       // Set this server as the active one (this will deactivate others)
       await StorageManager.setActiveServer(savedConfig.id);
+      console.log("✅ Server set as active:", savedConfig.id);
+
+      // Verify the server is active
+      const activeServer = await StorageManager.getActiveServer();
+      console.log("✅ Active server after setting:", activeServer);
 
       Alert.alert("Success", "Server configuration saved successfully!", [
         { text: "OK", onPress: onServerSaved },

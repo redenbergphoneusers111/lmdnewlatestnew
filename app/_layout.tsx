@@ -1,13 +1,20 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
-import { Nunito_400Regular, Nunito_600SemiBold, Nunito_700Bold } from '@expo-google-fonts/nunito';
-import * as SplashScreen from 'expo-splash-screen';
-import { useFrameworkReady } from './hooks/useFrameworkReady';
-
-SplashScreen.preventAutoHideAsync();
+import { useEffect } from "react";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+import {
+  Nunito_400Regular,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+} from "@expo-google-fonts/nunito";
+import { useFrameworkReady } from "./hooks/useFrameworkReady";
 
 export default function RootLayout() {
   useFrameworkReady();
@@ -23,9 +30,7 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
-      SplashScreen.hideAsync();
-    }
+    // Fonts are loaded, no splash screen to hide
   }, [fontsLoaded]);
 
   if (!fontsLoaded) {

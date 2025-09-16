@@ -52,6 +52,9 @@ const ServerListScreen: React.FC<ServerListScreenProps> = ({
   const loadServers = async () => {
     try {
       const configs = await StorageManager.getServerConfigs();
+      console.log("📋 Loaded servers:", configs);
+      const activeServer = await StorageManager.getActiveServer();
+      console.log("📋 Active server:", activeServer);
       setServers(configs);
     } catch (error) {
       console.error("Error loading servers:", error);
