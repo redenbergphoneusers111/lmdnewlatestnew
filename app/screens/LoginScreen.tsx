@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,12 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { styled } from "nativewind";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withDelay,
+} from "react-native-reanimated";
 import {
   User,
   Lock,
@@ -32,6 +38,7 @@ const StyledTextInput = styled(TextInput);
 const StyledPressable = styled(Pressable);
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledScrollView = styled(ScrollView);
+const StyledAnimatedView = styled(Animated.View);
 
 interface LoginScreenProps {
   onLoginSuccess: () => void;
@@ -47,6 +54,22 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login, activeServer, isLoading: authLoading } = useAuth();
+
+  // Minimal page opening animation
+  const pageOpacity = useSharedValue(0);
+  const pageTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    // Simple page opening animation
+    pageOpacity.value = withTiming(1, { duration: 500 });
+    pageTranslateY.value = withTiming(0, { duration: 500 });
+  }, []);
+
+  // Animated style for page opening
+  const pageAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: pageOpacity.value,
+    transform: [{ translateY: pageTranslateY.value }],
+  }));
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
@@ -95,182 +118,186 @@ const LoginScreen: React.FC<LoginScreenProps> = ({
 
   return (
     <StyledSafeAreaView className="flex-1 bg-indigo-600">
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
-        className="flex-1"
-      >
-        <LinearGradient
-          colors={["#4F46E5", "#7C3AED", "#EC4899"]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          className="h-60"
+      <StyledAnimatedView style={[{ flex: 1 }, pageAnimatedStyle]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.select({ ios: 0, android: 0 })}
+          className="flex-1"
         >
-          <StyledView className="flex-1 items-center justify-center px-8">
-            <StyledView className="w-20 h-20 bg-white/0 rounded-full items-center justify-center mb-4">
-              <Image
-                source={require("../../assets/lmdloclogowhite.png")}
-                style={{ width: 64, height: 64 }}
-                resizeMode="contain"
-              />
-            </StyledView>
-            <StyledText className="text-white text-2xl font-bold text-center">
-              Welcome Back
-            </StyledText>
-            <StyledText className="text-white/80 text-center mt-2">
-              Sign in to your delivery agent account
-            </StyledText>
-          </StyledView>
-        </LinearGradient>
-
-        <StyledScrollView
-          className="flex-1 px-6 -mt-8"
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={
-            Platform.OS === "ios" ? "interactive" : "on-drag"
-          }
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
-        >
-          {/* Server Status Card */}
-          <StyledView className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <StyledView className="flex-row items-center justify-between mb-4">
-              <StyledText className="text-lg font-semibold text-gray-800">
-                Server Status
-              </StyledText>
-              <StyledPressable
-                onPress={onServerConfig}
-                className="flex-row items-center bg-indigo-100 rounded-lg px-3 py-2 active:bg-indigo-200"
-              >
-                <Server size={16} color="#4F46E5" />
-                <StyledText className="text-indigo-600 font-medium ml-2">
-                  Configure
-                </StyledText>
-              </StyledPressable>
-            </StyledView>
-
-            {activeServer ? (
-              <StyledView className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <StyledView className="flex-row items-center">
-                  <CheckCircle size={20} color="#059669" />
-                  <StyledText className="text-green-800 font-medium ml-2">
-                    Connected to: {activeServer.name}
-                  </StyledText>
-                </StyledView>
-                <StyledText className="text-green-700 text-sm mt-2">
-                  {getFullServerUrl()}
-                </StyledText>
-              </StyledView>
-            ) : (
-              <StyledView className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <StyledView className="flex-row items-center">
-                  <AlertCircle size={20} color="#D97706" />
-                  <StyledText className="text-yellow-800 font-medium ml-2">
-                    No active server configured
-                  </StyledText>
-                </StyledView>
-                <StyledText className="text-yellow-700 text-sm mt-2">
-                  Please configure a server to continue
-                </StyledText>
-              </StyledView>
-            )}
-          </StyledView>
-
-          {/* Login Form */}
-          <StyledView className="bg-white rounded-2xl shadow-lg p-6 mb-6">
-            <StyledText className="text-lg font-semibold text-gray-800 mb-6">
-              Login Details
-            </StyledText>
-
-            {/* Username */}
-            <StyledView className="mb-4">
-              <StyledText className="text-gray-700 font-medium mb-2">
-                Username
-              </StyledText>
-              <StyledView className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
-                <User size={20} color="#6B7280" />
-                <StyledTextInput
-                  value={username}
-                  onChangeText={setUsername}
-                  placeholder="Enter your username"
-                  className="flex-1 ml-3 text-gray-800"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="none"
-                  autoCorrect={false}
+          <LinearGradient
+            colors={["#4F46E5", "#7C3AED", "#EC4899"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            className="h-60"
+          >
+            <StyledView className="flex-1 items-center justify-center px-8">
+              <StyledView className="w-20 h-20 bg-white/0 rounded-full items-center justify-center mb-4">
+                <Image
+                  source={require("../../assets/lmdloclogowhite.png")}
+                  style={{ width: 64, height: 64 }}
+                  resizeMode="contain"
                 />
               </StyledView>
-            </StyledView>
-
-            {/* Password */}
-            <StyledView className="mb-6">
-              <StyledText className="text-gray-700 font-medium mb-2">
-                Password
+              <StyledText className="text-white text-2xl font-bold text-center">
+                Welcome Back
               </StyledText>
-              <StyledView className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
-                <Lock size={20} color="#6B7280" />
-                <StyledTextInput
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter your password"
-                  className="flex-1 ml-3 text-gray-800"
-                  placeholderTextColor="#9CA3AF"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                />
+              <StyledText className="text-white/80 text-center mt-2">
+                Sign in to your delivery agent account
+              </StyledText>
+            </StyledView>
+          </LinearGradient>
+
+          <StyledScrollView
+            className="flex-1 px-6 -mt-8"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={
+              Platform.OS === "ios" ? "interactive" : "on-drag"
+            }
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+          >
+            {/* Server Status Card */}
+            <StyledView className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <StyledView className="flex-row items-center justify-between mb-4">
+                <StyledText className="text-lg font-semibold text-gray-800">
+                  Server Status
+                </StyledText>
                 <StyledPressable
-                  onPress={() => setShowPassword(!showPassword)}
-                  className="p-1"
+                  onPress={onServerConfig}
+                  className="flex-row items-center bg-indigo-100 rounded-lg px-3 py-2 active:bg-indigo-200"
                 >
-                  {showPassword ? (
-                    <EyeOff size={20} color="#6B7280" />
-                  ) : (
-                    <Eye size={20} color="#6B7280" />
-                  )}
+                  <Server size={16} color="#4F46E5" />
+                  <StyledText className="text-indigo-600 font-medium ml-2">
+                    Configure
+                  </StyledText>
                 </StyledPressable>
               </StyledView>
+
+              {activeServer ? (
+                <StyledView className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <StyledView className="flex-row items-center">
+                    <CheckCircle size={20} color="#059669" />
+                    <StyledText className="text-green-800 font-medium ml-2">
+                      Connected to: {activeServer.name}
+                    </StyledText>
+                  </StyledView>
+                  <StyledText className="text-green-700 text-sm mt-2">
+                    {getFullServerUrl()}
+                  </StyledText>
+                </StyledView>
+              ) : (
+                <StyledView className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <StyledView className="flex-row items-center">
+                    <AlertCircle size={20} color="#D97706" />
+                    <StyledText className="text-yellow-800 font-medium ml-2">
+                      No active server configured
+                    </StyledText>
+                  </StyledView>
+                  <StyledText className="text-yellow-700 text-sm mt-2">
+                    Please configure a server to continue
+                  </StyledText>
+                </StyledView>
+              )}
             </StyledView>
 
-            {/* Login Button */}
-            <StyledPressable
-              onPress={handleLogin}
-              disabled={isLoading || !activeServer}
-              className={`rounded-lg py-4 items-center ${
-                isLoading || !activeServer
-                  ? "bg-gray-300"
-                  : "bg-indigo-600 active:bg-indigo-700"
-              }`}
-            >
-              <StyledView className="flex-row items-center">
-                <LogIn
-                  size={20}
-                  color={isLoading || !activeServer ? "#9CA3AF" : "#FFFFFF"}
-                />
-                <StyledText
-                  className={`font-semibold ml-2 ${
-                    isLoading || !activeServer ? "text-gray-500" : "text-white"
-                  }`}
-                >
-                  {isLoading ? "Signing In..." : "Sign In"}
-                </StyledText>
-              </StyledView>
-            </StyledPressable>
-
-            {!activeServer && (
-              <StyledText className="text-red-500 text-sm text-center mt-3">
-                Please configure a server before logging in
+            {/* Login Form */}
+            <StyledView className="bg-white rounded-2xl shadow-lg p-6 mb-6">
+              <StyledText className="text-lg font-semibold text-gray-800 mb-6">
+                Login Details
               </StyledText>
-            )}
-          </StyledView>
 
-          {/* Help Text */}
-          <StyledView className="bg-blue-50 rounded-lg p-4 mb-6">
-            <StyledText className="text-blue-800 text-sm leading-5">
-              💡 <StyledText className="font-semibold">Need help?</StyledText>{" "}
-              If you&apos;re having trouble connecting, check your server
-              configuration or contact your system administrator.
-            </StyledText>
-          </StyledView>
-        </StyledScrollView>
-      </KeyboardAvoidingView>
+              {/* Username */}
+              <StyledView className="mb-4">
+                <StyledText className="text-gray-700 font-medium mb-2">
+                  Username
+                </StyledText>
+                <StyledView className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
+                  <User size={20} color="#6B7280" />
+                  <StyledTextInput
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder="Enter your username"
+                    className="flex-1 ml-3 text-gray-800"
+                    placeholderTextColor="#9CA3AF"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                  />
+                </StyledView>
+              </StyledView>
+
+              {/* Password */}
+              <StyledView className="mb-6">
+                <StyledText className="text-gray-700 font-medium mb-2">
+                  Password
+                </StyledText>
+                <StyledView className="flex-row items-center border border-gray-300 rounded-lg px-4 py-3">
+                  <Lock size={20} color="#6B7280" />
+                  <StyledTextInput
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Enter your password"
+                    className="flex-1 ml-3 text-gray-800"
+                    placeholderTextColor="#9CA3AF"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <StyledPressable
+                    onPress={() => setShowPassword(!showPassword)}
+                    className="p-1"
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#6B7280" />
+                    ) : (
+                      <Eye size={20} color="#6B7280" />
+                    )}
+                  </StyledPressable>
+                </StyledView>
+              </StyledView>
+
+              {/* Login Button */}
+              <StyledPressable
+                onPress={handleLogin}
+                disabled={isLoading || !activeServer}
+                className={`rounded-lg py-4 items-center ${
+                  isLoading || !activeServer
+                    ? "bg-gray-300"
+                    : "bg-indigo-600 active:bg-indigo-700"
+                }`}
+              >
+                <StyledView className="flex-row items-center">
+                  <LogIn
+                    size={20}
+                    color={isLoading || !activeServer ? "#9CA3AF" : "#FFFFFF"}
+                  />
+                  <StyledText
+                    className={`font-semibold ml-2 ${
+                      isLoading || !activeServer
+                        ? "text-gray-500"
+                        : "text-white"
+                    }`}
+                  >
+                    {isLoading ? "Signing In..." : "Sign In"}
+                  </StyledText>
+                </StyledView>
+              </StyledPressable>
+
+              {!activeServer && (
+                <StyledText className="text-red-500 text-sm text-center mt-3">
+                  Please configure a server before logging in
+                </StyledText>
+              )}
+            </StyledView>
+
+            {/* Help Text */}
+            <StyledView className="bg-blue-50 rounded-lg p-4 mb-6">
+              <StyledText className="text-blue-800 text-sm leading-5">
+                💡 <StyledText className="font-semibold">Need help?</StyledText>{" "}
+                If you&apos;re having trouble connecting, check your server
+                configuration or contact your system administrator.
+              </StyledText>
+            </StyledView>
+          </StyledScrollView>
+        </KeyboardAvoidingView>
+      </StyledAnimatedView>
     </StyledSafeAreaView>
   );
 };

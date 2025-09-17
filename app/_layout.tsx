@@ -43,7 +43,7 @@ export default function RootLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="+not-found" />
       </Stack>
-      <StatusBar style="light" />
+      <StatusBar style="light" backgroundColor="#4F46E5" />
     </GestureHandlerRootView>
   );
 }

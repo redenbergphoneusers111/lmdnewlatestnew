@@ -71,6 +71,97 @@ export interface Vehicle {
   whsCode: string;
 }
 
+export interface DeliveryOrderDetail {
+  details_ID: number;
+  doid: number;
+  itemCode: string;
+  description: string;
+  invoiceQty: number;
+  deliveryQty: number;
+  openQty: number;
+  price: string;
+  lineNo: number;
+  lineStatus: string;
+  childStatus: string;
+  itemGroup: string;
+  lineDeliveryDate: string;
+  uom: string | null;
+  atcCode: string;
+  whse: string;
+  imei: string;
+  serialNum: string;
+  returnQty: number;
+  binLocation: string | null;
+}
+
+export interface TransferOrder {
+  deliveryOrder_Details: DeliveryOrderDetail[];
+  id: number;
+  doNo: number;
+  doStr: string;
+  doDate: string;
+  docNum: string;
+  docStatus: string;
+  cardCode: string;
+  cardName: string;
+  docTotal: number;
+  remarks: string;
+  status: string;
+  isCancelled: boolean;
+  isPostponed: boolean;
+  isForceClosed: boolean;
+  isSync: boolean;
+  isActive: boolean;
+  cby: string;
+  cdt: string;
+  mby: string;
+  mdt: string;
+  deliveryAddress: string;
+  mobileNo: string;
+  documentDeliveryDate: string;
+  customerReference: string;
+  endCustomer: string | null;
+  vehicleID: number;
+  fromVehicleId: number;
+  stageDefinitionID: number;
+  numAtCard: string;
+  billTo: string;
+  phone1: string;
+  phone2: string;
+  whsCode: string;
+  whsName: string;
+  kamName: string;
+  docDate: string;
+  syncError: string | null;
+  cancellationID: number;
+  emailAddress: string;
+  bccAddress: string;
+  bpfName: string;
+  isPrint: boolean;
+  articleNo: string;
+  channelInvoice: string;
+  contactNumber: string;
+  paymentType: string;
+  amount: number;
+  locationName: string;
+  confirmedUserID: number;
+  paidAmount: number;
+  field1: string | null;
+  field2: string | null;
+  field3: string | null;
+  field4: string | null;
+  isOtherTransport: boolean;
+  transporterID: number;
+  configID: number;
+  companyName: string | null;
+  docEntry: string | null;
+  paymentTerm: string | null;
+  expectedAmount: number;
+  paymentModeId: number;
+  isconsignment: boolean;
+  currency: string | null;
+}
+
 export interface LocationData {
   lat: string;
   lng: string;
@@ -779,6 +870,102 @@ class ApiService {
     }
 
     console.log("📋 ===== END ASSIGNED TASK DETAILS API =====");
+
+    return result;
+  }
+
+  // Fetch Delivery Orders by Vehicle
+  async getDeliveryOrdersByVehicle(
+    vehicleId: number
+  ): Promise<ApiResponse<TransferOrder[]>> {
+    const endpoint = `/api/ChangeVehicle?vehicleId=${vehicleId}`;
+
+    console.log("📦 ===== DELIVERY ORDERS BY VEHICLE API REQUEST =====");
+    console.log("📍 Full URL:", `${this.baseUrl}${endpoint}`);
+    console.log("📋 Request Parameters:", {
+      vehicleId: vehicleId,
+    });
+    console.log(
+      "🔐 Authorization Header:",
+      this.getAuthHeader().substring(0, 25) + "..."
+    );
+    console.log("📤 Request Method: GET");
+
+    const result = await this.makeRequest<TransferOrder[]>(endpoint);
+
+    console.log("📦 ===== DELIVERY ORDERS BY VEHICLE API RESPONSE =====");
+    console.log("✅ Request Success:", result.success);
+    console.log("📊 HTTP Status Code:", result.statusCode);
+
+    if (result.success && result.data) {
+      console.log("📄 COMPLETE DELIVERY ORDERS JSON RESPONSE:");
+      console.log(JSON.stringify(result.data, null, 2));
+      console.log("📈 Total Delivery Order Records:", result.data.length);
+
+      if (result.data.length > 0) {
+        console.log("📦 Delivery Orders Summary:");
+        result.data.forEach((order, index) => {
+          console.log(
+            `  ${index + 1}. ID: ${order.id} | DO: ${order.doStr} | Customer: ${
+              order.cardName
+            } | Status: ${order.status} | Amount: ${order.docTotal}`
+          );
+        });
+      }
+    } else if (!result.success) {
+      console.log("❌ DELIVERY ORDERS API ERROR DETAILS:");
+      console.log("  - Error Message:", result.error);
+      console.log("  - Status Code:", result.statusCode);
+    }
+
+    console.log("📦 ===== END DELIVERY ORDERS BY VEHICLE API =====");
+
+    return result;
+  }
+
+  // Transfer Orders between Vehicles
+  async transferOrders(
+    orderIds: string,
+    userId: string,
+    toVehicleId: string,
+    fromVehicleId: string
+  ): Promise<ApiResponse<any>> {
+    const endpoint = `/api/ChangeVehicle/?DOIDs=${orderIds}&user_id=${userId}&vehicleId=${toVehicleId}&fromvehicleId=${fromVehicleId}&toStatus=Receiver&fromStatus=Sender`;
+
+    console.log("🔄 ===== TRANSFER ORDERS API REQUEST =====");
+    console.log("📍 Full URL:", `${this.baseUrl}${endpoint}`);
+    console.log("📋 Request Parameters:", {
+      DOIDs: orderIds,
+      user_id: userId,
+      vehicleId: toVehicleId,
+      fromvehicleId: fromVehicleId,
+      toStatus: "Receiver",
+      fromStatus: "Sender",
+    });
+    console.log(
+      "🔐 Authorization Header:",
+      this.getAuthHeader().substring(0, 25) + "..."
+    );
+    console.log("📤 Request Method: PUT");
+
+    const result = await this.makeRequest<any>(endpoint, {
+      method: "PUT",
+    });
+
+    console.log("🔄 ===== TRANSFER ORDERS API RESPONSE =====");
+    console.log("✅ Request Success:", result.success);
+    console.log("📊 HTTP Status Code:", result.statusCode);
+
+    if (result.success && result.data) {
+      console.log("📄 TRANSFER ORDERS RESPONSE:");
+      console.log(JSON.stringify(result.data, null, 2));
+    } else if (!result.success) {
+      console.log("❌ TRANSFER ORDERS API ERROR DETAILS:");
+      console.log("  - Error Message:", result.error);
+      console.log("  - Status Code:", result.statusCode);
+    }
+
+    console.log("🔄 ===== END TRANSFER ORDERS API =====");
 
     return result;
   }

@@ -1,5 +1,12 @@
-import React, { useState, useRef } from "react";
-import { View, Text, Pressable } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  BackHandler,
+  StatusBar,
+  PanResponder,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Animated, {
   useSharedValue,
@@ -14,6 +21,8 @@ import { styled } from "nativewind";
 import AnimatedDrawer from "./AnimatedDrawer";
 import BottomTabNavigator, { BottomTabHandle } from "./BottomTabNavigator";
 import WalletScreen from "../../screens/WalletScreen";
+import TransferOrderScreen from "../../screens/TransferOrderScreen";
+import ReturnOrderScreen from "../../screens/ReturnOrderScreen";
 import DeliveryStageDetailsScreen from "../../screens/DeliveryStageDetailsScreen";
 import PickupStageDetailsScreen, {
   PickupStage,
@@ -48,7 +57,7 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
     const targetValue = isDrawerOpen ? 0 : 1;
     drawerProgress.value = withTiming(
       targetValue,
-      { duration: 280 },
+      { duration: 200 },
       (finished) => {
         if (finished) {
           runOnJS(setIsDrawerOpen)(!isDrawerOpen);
@@ -58,7 +67,7 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   };
 
   const closeDrawer = () => {
-    drawerProgress.value = withTiming(0, { duration: 240 }, (finished) => {
+    drawerProgress.value = withTiming(0, { duration: 180 }, (finished) => {
       if (finished) runOnJS(setIsDrawerOpen)(false);
     });
   };
@@ -82,6 +91,36 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
     setStandaloneRoute(null);
   };
 
+  // Handle Android back button for main app
+  useEffect(() => {
+    const backAction = () => {
+      console.log(
+        "🔙 Back button pressed in main app, standalone route:",
+        standaloneRoute
+      );
+
+      if (standaloneRoute) {
+        // If we're in a standalone route (details screen), close it
+        setStandaloneRoute(null);
+        return true;
+      } else if (isDrawerOpen) {
+        // If drawer is open, close it
+        toggleDrawer();
+        return true;
+      } else {
+        // If we're on main screen, let the parent handle it (show exit confirmation)
+        return false;
+      }
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [standaloneRoute, isDrawerOpen]);
+
   const animatedMainStyle = useAnimatedStyle(() => {
     const scale = interpolate(drawerProgress.value, [0, 1], [1, 0.88]);
     const translateX = interpolate(drawerProgress.value, [0, 1], [0, 280]);
@@ -94,13 +133,29 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
   });
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(drawerProgress.value, [0, 1], [0, 0.5]),
-    pointerEvents: drawerProgress.value > 0 ? ("auto" as any) : ("none" as any),
+    opacity: interpolate(
+      drawerProgress.value,
+      [0, 0.1, 1],
+      [0, 0.3, 0.5],
+      "clamp"
+    ),
   }));
 
   const onNavigate = (route: string) => {
     if (route === "wallet") {
       setStandaloneRoute("wallet");
+      closeDrawer();
+      return;
+    }
+
+    if (route === "transfer") {
+      setStandaloneRoute("transfer");
+      closeDrawer();
+      return;
+    }
+
+    if (route === "return") {
+      setStandaloneRoute("return");
       closeDrawer();
       return;
     }
@@ -111,8 +166,6 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
       home: "home",
       deliveries: "my deliveries",
       notifications: "notifications",
-      transfer: "home",
-      return: "home",
     };
     const tabId = routeToTab[route];
     if (tabId && tabsRef.current) {
@@ -141,8 +194,17 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
 
   const [standaloneRouteData, setStandaloneRouteData] = useState<any>(null);
 
+  // Pan responder for swipe-to-open drawer gesture on main content - DISABLED
+  const mainContentPanResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponder: () => false,
+    onPanResponderMove: () => {},
+    onPanResponderRelease: () => {},
+  });
+
   return (
     <>
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
       <StyledSafeAreaView className="flex-1 bg-primary-500">
         <StyledView className="flex-1">
           <AnimatedDrawer
@@ -155,14 +217,41 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
           {/* Backdrop */}
           <StyledAnimatedView
             className="absolute inset-0 bg-black"
-            style={backdropStyle}
+            style={[
+              backdropStyle,
+              {
+                zIndex: 5,
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              },
+            ]}
+            pointerEvents={isDrawerOpen ? "box-none" : "none"}
           >
-            <StyledPressable className="flex-1" onPress={closeDrawer} />
+            <StyledPressable
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              onPress={() => {
+                console.log("🎯 Backdrop touched - closing drawer");
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                closeDrawer();
+              }}
+              onPressIn={() => console.log("🎯 Backdrop press in")}
+              onPressOut={() => console.log("🎯 Backdrop press out")}
+            />
           </StyledAnimatedView>
 
           <StyledAnimatedView
             className="flex-1 bg-primary-500 overflow-hidden"
             style={animatedMainStyle}
+            {...mainContentPanResponder.panHandlers}
           >
             {standaloneRoute === "wallet" ? (
               <StyledView className="flex-row items-center justify-between px-6 pt-4 pb-2">
@@ -180,6 +269,8 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
                 </StyledView>
                 <StyledView style={{ width: 40, height: 40 }} />
               </StyledView>
+            ) : standaloneRoute === "transfer" ? (
+              <StyledView style={{ width: 40, height: 40 }} />
             ) : standaloneRoute === "delivery-stage" ? (
               <StyledView style={{ width: 40, height: 40 }} />
             ) : standaloneRoute === "pickup-stage" ? (
@@ -213,13 +304,17 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
             )}
             {standaloneRoute === "wallet" ? (
               <WalletScreen />
+            ) : standaloneRoute === "transfer" ? (
+              <TransferOrderScreen onBack={handleBackFromStandalone} />
+            ) : standaloneRoute === "return" ? (
+              <ReturnOrderScreen onBack={handleBackFromStandalone} />
             ) : standaloneRoute === "delivery-stage" ? (
               <DeliveryStageDetailsScreen
                 orderData={standaloneRouteData?.orderData}
                 currentStage={standaloneRouteData?.currentStage}
                 onBack={handleBackFromStandalone}
                 onStageChange={(newStage) => {
-                  setStandaloneRouteData((prev) => ({
+                  setStandaloneRouteData((prev: any) => ({
                     ...prev,
                     currentStage: newStage,
                   }));
@@ -231,7 +326,7 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
                 currentStage={standaloneRouteData?.currentStage}
                 onBack={handleBackFromStandalone}
                 onStageChange={(newStage) => {
-                  setStandaloneRouteData((prev) => ({
+                  setStandaloneRouteData((prev: any) => ({
                     ...prev,
                     currentStage: newStage,
                   }));
@@ -243,7 +338,7 @@ const MainNavigator: React.FC<MainNavigatorProps> = ({ onLogout }) => {
                 currentStage={standaloneRouteData?.currentStage}
                 onBack={handleBackFromStandalone}
                 onStageChange={(newStage) => {
-                  setStandaloneRouteData((prev) => ({
+                  setStandaloneRouteData((prev: any) => ({
                     ...prev,
                     currentStage: newStage,
                   }));

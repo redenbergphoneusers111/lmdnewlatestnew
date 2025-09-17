@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View } from "react-native";
+import { View, BackHandler, StatusBar } from "react-native";
 import { styled } from "nativewind";
 import SplashScreen from "../../screens/SplashScreen";
 import ServerSetupScreen from "../../screens/ServerSetupScreen";
@@ -141,6 +141,43 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
     setCurrentScreen("login");
   };
 
+  // Handle Android back button for auth flow
+  useEffect(() => {
+    const backAction = () => {
+      console.log("🔙 Back button pressed, current screen:", currentScreen);
+
+      switch (currentScreen) {
+        case "splash":
+          // Don't allow back from splash
+          return true;
+        case "login":
+          // Don't allow back from login (would exit app)
+          return true;
+        case "serverList":
+          // Go back to login
+          setCurrentScreen("login");
+          return true;
+        case "serverSetup":
+          // Go back to server list
+          setCurrentScreen("serverList");
+          return true;
+        case "vehicleSelection":
+          // Go back to login
+          setCurrentScreen("login");
+          return true;
+        default:
+          return false;
+      }
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [currentScreen]);
+
   const renderScreen = () => {
     switch (currentScreen) {
       case "splash":
@@ -186,7 +223,12 @@ const AuthNavigator: React.FC<AuthNavigatorProps> = ({ onAuthComplete }) => {
     }
   };
 
-  return <StyledView className="flex-1">{renderScreen()}</StyledView>;
+  return (
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+      <StyledView className="flex-1">{renderScreen()}</StyledView>
+    </>
+  );
 };
 
 export default AuthNavigator;

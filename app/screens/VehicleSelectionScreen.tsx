@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { styled } from "nativewind";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+} from "react-native-reanimated";
 import {
   Truck,
   MapPin,
@@ -25,6 +30,7 @@ const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledPressable = styled(Pressable);
 const StyledSafeAreaView = styled(SafeAreaView);
+const StyledAnimatedView = styled(Animated.View);
 
 interface VehicleSelectionScreenProps {
   onVehicleSelected: () => void;
@@ -33,28 +39,53 @@ interface VehicleSelectionScreenProps {
 const VehicleSelectionScreen: React.FC<VehicleSelectionScreenProps> = ({
   onVehicleSelected,
 }) => {
-  const { vehicles, selectedVehicle, selectVehicle, isLoading, userDetails } = useAuth();
+  const { vehicles, selectedVehicle, selectVehicle, isLoading, userDetails } =
+    useAuth();
+
+  // Minimal page opening animation
+  const pageOpacity = useSharedValue(0);
+  const pageTranslateY = useSharedValue(20);
+
+  useEffect(() => {
+    // Simple page opening animation
+    pageOpacity.value = withTiming(1, { duration: 500 });
+    pageTranslateY.value = withTiming(0, { duration: 500 });
+  }, []);
+
+  // Animated style for page opening
+  const pageAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: pageOpacity.value,
+    transform: [{ translateY: pageTranslateY.value }],
+  }));
 
   const handleVehicleSelect = async (vehicle: Vehicle) => {
     try {
-      console.log('🚗 Vehicle selection initiated for:', vehicle.vehicleNo);
-      
+      console.log("🚗 Vehicle selection initiated for:", vehicle.vehicleNo);
+
       await selectVehicle(vehicle);
-      
+
       // Get user role for Statistics API (equivalent to Java code after vehicle selection)
-      const userRole = userDetails.length > 0 ? userDetails[0].roleName : 'admin';
-      console.log('👤 User Role for Statistics API:', userRole);
-      
+      const userRole =
+        userDetails.length > 0 ? userDetails[0].roleName : "admin";
+      console.log("👤 User Role for Statistics API:", userRole);
+
       // Call Statistics API after vehicle selection (like Java SelectVehicleActivity) new
-      console.log('📊 Calling Statistics API after vehicle selection...');
-      const statisticsResponse = await apiService.getStatistics(vehicle.id, userRole);
-      
+      console.log("📊 Calling Statistics API after vehicle selection...");
+      const statisticsResponse = await apiService.getStatistics(
+        vehicle.id,
+        userRole
+      );
+
       if (statisticsResponse.success) {
-        console.log('✅ Statistics API called successfully after vehicle selection');
+        console.log(
+          "✅ Statistics API called successfully after vehicle selection"
+        );
       } else {
-        console.warn('⚠️ Statistics API failed but continuing:', statisticsResponse.error);
+        console.warn(
+          "⚠️ Statistics API failed but continuing:",
+          statisticsResponse.error
+        );
       }
-      
     } catch (error) {
       console.error("❌ Error selecting vehicle:", error);
       Alert.alert("Error", "Failed to select vehicle. Please try again.");
@@ -116,7 +147,9 @@ const VehicleSelectionScreen: React.FC<VehicleSelectionScreenProps> = ({
       <StyledSafeAreaView className="flex-1 bg-gray-50">
         <StyledView className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#3B82F6" />
-          <StyledText className="text-gray-600 mt-4">Loading vehicles...</StyledText>
+          <StyledText className="text-gray-600 mt-4">
+            Loading vehicles...
+          </StyledText>
         </StyledView>
       </StyledSafeAreaView>
     );
@@ -124,67 +157,72 @@ const VehicleSelectionScreen: React.FC<VehicleSelectionScreenProps> = ({
 
   return (
     <StyledSafeAreaView className="flex-1 bg-indigo-600">
-      <LinearGradient
-        colors={["#4F46E5", "#7C3AED", "#EC4899"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        className="h-60"
-      >
-        <StyledView className="flex-1 items-center justify-center px-8">
-          <StyledView className="w-20 h-20 bg-white/20 rounded-full items-center justify-center mb-4">
-            <Truck size={40} color="#FFFFFF" />
-          </StyledView>
-          <StyledText className="text-white text-2xl font-bold text-center">
-            Select Your Vehicle
-          </StyledText>
-          <StyledText className="text-white/80 text-center mt-2">
-            Choose the vehicle you'll be using today
-          </StyledText>
-        </StyledView>
-      </LinearGradient>
-
-      <StyledView className="flex-1 -mt28">
-        {vehicles.length === 0 ? (
-          <StyledView className="flex-1 items-center justify-center px-6">
-            <StyledView className="w-16 h-16 bg-yellow-100 rounded-full items-center justify-center mb-4">
-              <AlertCircle size={32} color="#F59E0B" />
+      <StyledAnimatedView style={[{ flex: 1 }, pageAnimatedStyle]}>
+        <LinearGradient
+          colors={["#4F46E5", "#7C3AED", "#EC4899"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="h-60"
+        >
+          <StyledView className="flex-1 items-center justify-center px-8">
+            <StyledView className="w-20 h-20 bg-white/20 rounded-full items-center justify-center mb-4">
+              <Truck size={40} color="#FFFFFF" />
             </StyledView>
-            <StyledText className="text-xl font-semibold text-white-800 text-center mb-2">
-              No Vehicles Available
+            <StyledText className="text-white text-2xl font-bold text-center">
+              Select Your Vehicle
             </StyledText>
-            <StyledText className="text-gray-600 text-center">
-              There are no vehicles assigned to your account. Please contact your administrator.
+            <StyledText className="text-white/80 text-center mt-2">
+              Choose the vehicle you'll be using today
             </StyledText>
           </StyledView>
-        ) : (
-          <FlatList
-            data={vehicles}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={renderVehicleItem}
-            contentContainerStyle={{ paddingTop: 24, paddingBottom: 24 }}
-            showsVerticalScrollIndicator={false}
-            ListHeaderComponent={
-              <StyledView className="px-6 mb-4">
-                <StyledText className="text-lg font-semibold text-white">
-                  Available Vehicles ({vehicles.length})
-                </StyledText>
-                <StyledText className="text-sm text-white/60 mt-1">
-                  Tap on a vehicle to select it
-                </StyledText>
-              </StyledView>
-            }
-          />
-        )}
+        </LinearGradient>
 
-        {selectedVehicle && (
-          <StyledPressable
-            className="bg-indigo-500 rounded-lg py-4 px-4 items-center mx-6 mb-6"
-            onPress={onVehicleSelected}
-          >
-            <StyledText className="text-white font-semibold">Confirm</StyledText>
-          </StyledPressable>
-        )}
-      </StyledView>
+        <StyledView className="flex-1 -mt28">
+          {vehicles.length === 0 ? (
+            <StyledView className="flex-1 items-center justify-center px-6">
+              <StyledView className="w-16 h-16 bg-yellow-100 rounded-full items-center justify-center mb-4">
+                <AlertCircle size={32} color="#F59E0B" />
+              </StyledView>
+              <StyledText className="text-xl font-semibold text-white-800 text-center mb-2">
+                No Vehicles Available
+              </StyledText>
+              <StyledText className="text-gray-600 text-center">
+                There are no vehicles assigned to your account. Please contact
+                your administrator.
+              </StyledText>
+            </StyledView>
+          ) : (
+            <FlatList
+              data={vehicles}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={renderVehicleItem}
+              contentContainerStyle={{ paddingTop: 24, paddingBottom: 24 }}
+              showsVerticalScrollIndicator={false}
+              ListHeaderComponent={
+                <StyledView className="px-6 mb-4">
+                  <StyledText className="text-lg font-semibold text-white">
+                    Available Vehicles ({vehicles.length})
+                  </StyledText>
+                  <StyledText className="text-sm text-white/60 mt-1">
+                    Tap on a vehicle to select it
+                  </StyledText>
+                </StyledView>
+              }
+            />
+          )}
+
+          {selectedVehicle && (
+            <StyledPressable
+              className="bg-indigo-500 rounded-lg py-4 px-4 items-center mx-6 mb-6"
+              onPress={onVehicleSelected}
+            >
+              <StyledText className="text-white font-semibold">
+                Confirm
+              </StyledText>
+            </StyledPressable>
+          )}
+        </StyledView>
+      </StyledAnimatedView>
     </StyledSafeAreaView>
   );
 };

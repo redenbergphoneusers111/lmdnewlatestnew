@@ -1,11 +1,12 @@
 import React from "react";
-import { View, Text, Pressable } from "react-native";
+import { View, Text, Pressable, PanResponder } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   interpolate,
   SharedValue,
+  runOnJS,
 } from "react-native-reanimated";
 import {
   Home,
@@ -52,6 +53,33 @@ const AnimatedDrawer: React.FC<AnimatedDrawerProps> = ({
   onNavigate,
 }) => {
   const { user, userDetails, selectedVehicle } = useAuth();
+
+  // Pan responder for swipe-to-close gesture
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => isOpen,
+    onMoveShouldSetPanResponder: (_, gestureState) => {
+      // Only respond to horizontal swipes when drawer is open
+      return isOpen && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+    },
+    onPanResponderMove: (_, gestureState) => {
+      if (isOpen && gestureState.dx < 0) {
+        // Swiping left (closing direction)
+        const progress = Math.max(0, Math.min(1, 1 + gestureState.dx / 280));
+        drawerProgress.value = progress;
+      }
+    },
+    onPanResponderRelease: (_, gestureState) => {
+      if (isOpen) {
+        if (gestureState.dx < -50 || gestureState.vx < -0.5) {
+          // Swipe left with enough distance or velocity - close drawer
+          runOnJS(onClose)();
+        } else {
+          // Snap back to open position
+          drawerProgress.value = withTiming(1, { duration: 150 });
+        }
+      }
+    },
+  });
   const animatedDrawerStyle = useAnimatedStyle(() => {
     const translateX = interpolate(drawerProgress.value, [0, 1], [-280, 0]);
     return {
@@ -84,6 +112,7 @@ const AnimatedDrawer: React.FC<AnimatedDrawerProps> = ({
     <Animated.View
       className="absolute top-0 left-0 w-70 h-full bg-white z-20"
       style={[animatedDrawerStyle, { width: 280 }]}
+      {...panResponder.panHandlers}
     >
       <View className="flex-1 pt-16 px-6">
         {/* Profile Section */}

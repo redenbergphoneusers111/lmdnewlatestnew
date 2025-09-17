@@ -10,6 +10,10 @@
     "icon": "./assets/lmdlogo.png",
     "ios": {
       "supportsTablet": true,
+      "statusBar": {
+        "backgroundColor": "#4F46E5",
+        "barStyle": "light-content"
+      },
       "infoPlist": {
         "NSCameraUsageDescription": "This app needs access to camera to take photos for order confirmation.",
         "NSPhotoLibraryUsageDescription": "This app needs access to photo library to select images for order confirmation."
@@ -20,7 +24,11 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+      ],
+      "statusBar": {
+        "backgroundColor": "#4F46E5",
+        "barStyle": "light-content"
+      }
     },
     "web": {
       "bundler": "metro",
